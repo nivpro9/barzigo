@@ -10,7 +10,7 @@
 :root{
   --bg:#edf1f1; --surface:#ffffff; --ink:#152226; --muted:#56676b; --line:#ccd7d7;
   --ground:#e3e7e6; --campus:#c4cbcb; --road:#6a7476; --walk:#ebe8f6; --park:#8b9496;
-  --route:#f2b705; --routeCase:#1b2326; --link:#1565c0; --accent:#0a66d6; --accentInk:#ffffff; --accentSoft:#dce9fb; --brand:#0a6ad8; --brandInk:#0b2c5c; --pin:#e3242b;
+  --route:#f2b705; --routeCase:#1b2326; --link:#1565c0; --accent:#0a66d6; --accentInk:#ffffff; --accentSoft:#dce9fb; --brand:#0a6ad8; --brandInk:#0b4a94; --go1:#2b3fa6; --go2:#d62a7a; --pin:#e3242b;
   --g1:#1d4fb8; --g3:#4f9a28; --g5:#e2531a; --g6:#4b2470; --badgeInk:#ffffff; --warn:#94480a; --warnSoft:#fbeedd; --soft:#eef3f2;
   --display:"Secular One","Rubik","Noto Sans Arabic",system-ui,sans-serif;
   --body:"Rubik","Noto Sans Arabic",system-ui,sans-serif;
@@ -18,13 +18,13 @@
 @media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
   --bg:#0b1517; --surface:#132124; --ink:#e2eeec; --muted:#93a8aa; --line:#25393c;
   --ground:#0e1a1c; --campus:#1d2c2f; --road:#3b4c4f; --walk:#3a3f5c; --park:#2c3b3e;
-  --route:#f5c22c; --routeCase:#0b1517; --link:#8fb0ff; --accent:#5d9ff0; --accentInk:#061a33; --accentSoft:#16294a; --brand:#5d9ff0; --brandInk:#e6eefb; --pin:#f0545a;
+  --route:#f5c22c; --routeCase:#0b1517; --link:#8fb0ff; --accent:#5d9ff0; --accentInk:#061a33; --accentSoft:#16294a; --brand:#5d9ff0; --brandInk:#e6eefb; --go1:#8a95ff; --go2:#ff6aa9; --pin:#f0545a;
   --g1:#5a86e8; --g3:#7cbf4e; --g5:#f07a45; --g6:#9b6fcb; --badgeInk:#0b1517; --warn:#f0a35c; --warnSoft:#2d2114; --soft:#1a2b2e;
   color-scheme:dark}}
 :root[data-theme="dark"]{
   --bg:#0b1517; --surface:#132124; --ink:#e2eeec; --muted:#93a8aa; --line:#25393c;
   --ground:#0e1a1c; --campus:#1d2c2f; --road:#3b4c4f; --walk:#3a3f5c; --park:#2c3b3e;
-  --route:#f5c22c; --routeCase:#0b1517; --link:#8fb0ff; --accent:#5d9ff0; --accentInk:#061a33; --accentSoft:#16294a; --brand:#5d9ff0; --brandInk:#e6eefb; --pin:#f0545a;
+  --route:#f5c22c; --routeCase:#0b1517; --link:#8fb0ff; --accent:#5d9ff0; --accentInk:#061a33; --accentSoft:#16294a; --brand:#5d9ff0; --brandInk:#e6eefb; --go1:#8a95ff; --go2:#ff6aa9; --pin:#f0545a;
   --g1:#5a86e8; --g3:#7cbf4e; --g5:#f07a45; --g6:#9b6fcb; --badgeInk:#0b1517; --warn:#f0a35c; --warnSoft:#2d2114; --soft:#1a2b2e;
   color-scheme:dark}
 html.big{font-size:20px}
@@ -39,7 +39,7 @@ button:disabled{opacity:.45;cursor:default}
 .brand{display:flex;align-items:center;gap:10px;min-width:0}
 .logo{width:50px;height:46px;border-radius:10px;background:#ffffff;display:grid;place-items:center;flex:none;border:1px solid var(--line)}
 .word{font-family:"Rubik",var(--body);font-weight:700;font-size:1.65rem;line-height:1;letter-spacing:-.01em;color:var(--brandInk)}
-.word em{font-style:normal;color:var(--brand)}
+.word em{font-style:normal;color:var(--go2);background:linear-gradient(90deg,var(--go1),var(--go2));-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent}
 .tag{font-size:.8rem;color:var(--muted);display:block;margin-top:2px}
 .ctrls{display:flex;gap:8px;align-items:center}
 .ctrls select,.iconbtn{height:40px;border:1px solid var(--line);background:var(--surface);border-radius:8px;padding:0 10px}
@@ -437,7 +437,26 @@ const INDOOR={
    depts:{"מרפאת עיניים":{floor:"1",howto:"ביציאה מהמעלית פנו שמאלה. המרפאה בסוף המסדרון."}}}
 };
 // a building whose approach path has steps is closed to the accessible route
-for(const b in INDOOR)if(INDOOR[b].approach==="stairs"&&ADJ["B"+b])ADJ["B"+b].forEach(o=>o.e.stairs=true);
+const markApproach=()=>{for(const b in INDOOR)if(INDOOR[b].approach==="stairs"&&ADJ["B"+b])ADJ["B"+b].forEach(o=>o.e.stairs=true)};
+markApproach();
+
+/* ---------- Live field data from Supabase (same project as mapping.html; empty values keep the built-in data) ---------- */
+const SB_URL="",SB_KEY="";
+// names on the field form that differ from the department names above
+const NAME_ALIAS={"מיון נשים, הריון בסיכון, מחלקת נשים":"מיון נשים ומחלקת נשים","חדרי ניתוח אשפוז יום":"ניתוחי אשפוז יום"};
+function matchDept(b,name){name=NAME_ALIAS[name]||name;const base=n=>n.split(" (")[0].trim();
+  return DEPTS.find(d=>d.b===b&&(d.n[0]===name||base(d.n[0])===base(name)))}
+async function loadField(){
+  if(!SB_URL||!SB_KEY)return;
+  try{const r=await fetch(SB_URL+"/rest/v1/mapping?select=id,data",{headers:{apikey:SB_KEY,Authorization:"Bearer "+SB_KEY}});if(!r.ok)return;
+    let changed=false;
+    for(const {id,data:x} of await r.json()){if(!/^b\d+$/.test(id)||!x)continue;const b=id.slice(1),depts={};
+      for(const i in x.depts||{}){const v=x.depts[i],d=v&&v.name&&matchDept(b,v.name);if(d&&(v.floor||v.howto))depts[d.n[0]]={floor:v.floor,howto:v.howto}}
+      if(!x.entrance&&!Object.keys(depts).length&&!x.approach)continue;
+      INDOOR[b]={entrance:x.entrance||"",entranceAccess:x.entranceAccess||"",approach:x.approach||"",approachNote:x.approachNote||"",elevators:x.elevators||"",elevNote:x.elevNote||"",depts};changed=true}
+    if(changed){markApproach();if(S.view!=="live")render()}
+  }catch(e){}
+}
 
 /* ---------- State ---------- */
 const S={lang:"he",from:"here",to:null,big:false,acc:false,voice:false,view:"home",cat:"all",q:"",step:0,sel:null,scan:false,fb:null,whole:false};
@@ -538,7 +557,7 @@ const ico=(k,s=22)=>`<svg width="${s}" height="${s}" viewBox="0 0 24 24" fill="n
 const app=document.getElementById("app");
 function header(){
   const opts=[["he","עברית"],["en","English"],["ar","العربية"],["ru","Русский"]].map(([v,l])=>`<option value="${v}"${v===S.lang?" selected":""}>${l}</option>`).join("");
-  return `<header class="top"><div class="brand"><div class="logo"><svg width="44" height="40" viewBox="0 0 110 100" aria-hidden="true"><path d="M8 40h22v40H8zM80 40h22v40H80z" fill="#c9dcf2"/><path d="M6 38l2-3h22v5H6zM80 35h22l2 3v2H80z" fill="#1565c0"/><path d="M30 18h50v62H30z" fill="#ffffff" stroke="#c9dcf2" stroke-width="2"/><path d="M27 20l7-7h42l7 7" fill="none" stroke="#1565c0" stroke-width="5" stroke-linejoin="round"/><path d="M51 24h8v7h7v8h-7v7h-8v-7h-7v-8h7z" fill="#e3242b"/><rect x="43" y="56" width="24" height="24" fill="#1565c0"/><rect x="49" y="62" width="5" height="18" fill="#3d9bf0"/><rect x="56" y="62" width="5" height="18" fill="#3d9bf0"/><rect x="12" y="46" width="6" height="8" fill="#3d9bf0"/><rect x="20" y="46" width="6" height="8" fill="#3d9bf0"/><rect x="12" y="60" width="6" height="8" fill="#3d9bf0"/><rect x="20" y="60" width="6" height="8" fill="#3d9bf0"/><rect x="84" y="46" width="6" height="8" fill="#3d9bf0"/><path d="M55 80c-4 4-26 3-26 8s40 3 50 6" fill="none" stroke="#1565c0" stroke-width="5" stroke-linecap="round"/><path d="M95 52a12 12 0 0 0-24 0c0 8 12 22 12 22s12-14 12-22z" fill="#e3242b" stroke="#ffffff" stroke-width="2.5"/><circle cx="83" cy="52" r="4.5" fill="#ffffff"/><ellipse cx="85" cy="92" rx="12" ry="4" fill="#1565c0"/></svg></div><div><div class="word" dir="ltr">Barzi<em>Go</em></div><span class="tag">${esc(t("tag"))}</span></div></div>
+  return `<header class="top"><div class="brand"><div class="logo"><svg width="46" height="40" viewBox="0 0 120 100" aria-hidden="true"><defs><linearGradient id="lgH" x1="0" x2="1"><stop offset="0" stop-color="#1f6fd0"/><stop offset="1" stop-color="#d62a7a"/></linearGradient><linearGradient id="lgP" x1="0" x2="1"><stop offset="0" stop-color="#2b4fb8"/><stop offset="1" stop-color="#1aa3d8"/></linearGradient><linearGradient id="lgPin" x1="0" x2="1"><stop offset="0" stop-color="#8e2a8c"/><stop offset="1" stop-color="#d62a7a"/></linearGradient></defs><path d="M10 40h26v38H10zM84 40h26v38H84z" fill="#d3e5f6"/><path d="M8 40l2-4 26-4v5zM112 40l-2-4-26-4v5z" fill="#1a6fc4"/><path d="M36 20h48v58H36z" fill="#ffffff" stroke="#d3e5f6" stroke-width="2"/><path d="M33 22l7-7h40l7 7" fill="none" stroke="#1a6fc4" stroke-width="4" stroke-linejoin="round" stroke-linecap="round"/><path d="M60 47c-8-5-13-9-13-15a6.5 6.5 0 0 1 13-2.5a6.5 6.5 0 0 1 13 2.5c0 6-5 10-13 15z" fill="url(#lgH)"/><rect x="48" y="57" width="24" height="21" fill="#1a6fc4"/><rect x="53" y="61" width="6" height="17" fill="#4fa8ec"/><rect x="61" y="61" width="6" height="17" fill="#4fa8ec"/><rect x="15" y="46" width="6" height="8" fill="#2b8fdc"/><rect x="24" y="46" width="6" height="8" fill="#2b8fdc"/><rect x="15" y="60" width="6" height="8" fill="#2b8fdc"/><rect x="24" y="60" width="6" height="8" fill="#2b8fdc"/><rect x="90" y="46" width="6" height="8" fill="#2b8fdc"/><path d="M60 78c-6 4-24 4-24 9s30 3 44 6" fill="none" stroke="url(#lgP)" stroke-width="5" stroke-linecap="round"/><ellipse cx="92" cy="90" rx="10" ry="3.5" fill="#1a6fc4"/><path d="M104 62a12 12 0 0 0-24 0c0 8 12 26 12 26s12-18 12-26z" fill="url(#lgPin)" stroke="#ffffff" stroke-width="2.5"/><circle cx="92" cy="62" r="4.5" fill="#ffffff"/></svg></div><div><div class="word" dir="ltr">Barzi<em>Go</em></div><span class="tag">${esc(t("tag"))}</span></div></div>
   <div class="ctrls"><label class="sr" for="lang">${esc(t("lang"))}</label><select id="lang">${opts}</select>
   <button class="iconbtn" data-act="big" aria-pressed="${S.big}" title="${esc(t("big"))}"><span aria-hidden="true">A<small>A</small></span><span class="sr">${esc(t("big"))}</span></button></div></header>`;
 }
@@ -813,5 +832,5 @@ function fromHash(){const h=(location.hash||"").slice(1);
   if(h.startsWith("qr-")&&HASH[h.slice(3)]){S.from=HASH[h.slice(3)];S.view="home";S.to=null}
   else if(h==="sms-eye"){S.from="P1";S.to=byName("300","מרפאת");S.view="route"}}
 window.addEventListener("hashchange",()=>{fromHash();render()});
-fromHash();render();
+fromHash();render();loadField();
 </script>

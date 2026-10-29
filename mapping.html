@@ -1,0 +1,278 @@
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex">
+<title>BarziGo מיפוי שטח</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Rubik:wght@400;500;700&family=Secular+One&display=swap">
+<style>
+/* Layout: field clipboard. A building list with progress on top, one building form open at a time; building chips keep the hospital's color codes */
+:root{
+  --bg:#edf1f1; --surface:#ffffff; --ink:#152226; --muted:#56676b; --line:#ccd7d7; --soft:#eef3f2;
+  --accent:#0d6b60; --accentInk:#ffffff; --accentSoft:#d6ebe7; --link:#1f4fbf;
+  --g1:#1d4fb8; --g3:#4f9a28; --g5:#e2531a; --g6:#4b2470; --g7:#3a4245; --badgeInk:#ffffff;
+  --todo:#8a979a; --part:#b7791f; --partSoft:#fbefd9; --done:#1f8a4c; --doneSoft:#dcf1e4; --err:#b42318; --errSoft:#fde4e1;
+  --display:"Secular One","Rubik",system-ui,sans-serif; --body:"Rubik",system-ui,sans-serif;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#0b1517; --surface:#132124; --ink:#e2eeec; --muted:#93a8aa; --line:#25393c; --soft:#1a2b2e;
+  --accent:#45bba9; --accentInk:#04201b; --accentSoft:#173532; --link:#8fb0ff;
+  --g1:#5a86e8; --g3:#7cbf4e; --g5:#f07a45; --g6:#9b6fcb; --g7:#8b979a; --badgeInk:#0b1517;
+  --todo:#6f8285; --part:#e0a84a; --partSoft:#2e2414; --done:#4cc282; --doneSoft:#12301f; --err:#f2877c; --errSoft:#3a1714;
+  color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0b1517; --surface:#132124; --ink:#e2eeec; --muted:#93a8aa; --line:#25393c; --soft:#1a2b2e;
+  --accent:#45bba9; --accentInk:#04201b; --accentSoft:#173532; --link:#8fb0ff;
+  --g1:#5a86e8; --g3:#7cbf4e; --g5:#f07a45; --g6:#9b6fcb; --g7:#8b979a; --badgeInk:#0b1517;
+  --todo:#6f8285; --part:#e0a84a; --partSoft:#2e2414; --done:#4cc282; --doneSoft:#12301f; --err:#f2877c; --errSoft:#3a1714;
+  color-scheme:dark}
+body{background:var(--bg);color:var(--ink);font-family:var(--body);font-size:1rem;line-height:1.5}
+*{box-sizing:border-box}
+button,select,input,textarea{font:inherit;color:inherit}
+button{cursor:pointer}
+button:disabled{opacity:.5;cursor:default}
+:focus-visible{outline:3px solid var(--link);outline-offset:2px;border-radius:6px}
+.wrap{max-width:760px;margin:0 auto;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:14px 40px;display:flex;flex-direction:column;gap:14px}
+h1,h2,h3{font-family:var(--display);font-weight:400;margin:0;line-height:1.2;text-wrap:balance}
+h1{font-size:1.55rem} h2{font-size:1.2rem} h3{font-size:1.02rem}
+.top{display:flex;align-items:center;gap:10px}
+.mark{width:38px;height:38px;border-radius:9px;background:var(--accent);color:var(--accentInk);display:grid;place-items:center;flex:none}
+.sub{color:var(--muted);font-size:.88rem;margin:2px 0 0}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:14px;display:flex;flex-direction:column;gap:12px;min-width:0}
+.how ol{margin:0;padding-inline-start:20px;display:flex;flex-direction:column;gap:4px}
+.bar{height:10px;border-radius:5px;background:var(--soft);overflow:hidden;display:flex}
+.bar span{height:100%}
+.stats{display:flex;gap:14px;flex-wrap:wrap;font-size:.88rem;color:var(--muted);font-variant-numeric:tabular-nums}
+.stats b{color:var(--ink)}
+.notice{border-radius:10px;padding:10px 12px;font-size:.9rem}
+.notice.err{background:var(--errSoft);color:var(--err)}
+.notice.info{background:var(--soft);color:var(--muted)}
+.blist{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px}
+.bbtn{width:100%;display:flex;align-items:center;gap:10px;text-align:start;background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:10px;min-height:60px}
+.bbtn:hover{border-color:var(--accent)}
+.num{min-width:44px;height:28px;padding:0 6px;border-radius:6px;background:var(--c);color:var(--badgeInk);display:grid;place-items:center;font-weight:700;font-variant-numeric:tabular-nums;flex:none}
+.bbtn .t{display:flex;flex-direction:column;min-width:0;gap:2px}
+.st{font-size:.76rem;border-radius:999px;padding:1px 8px;width:max-content}
+.st.todo{background:var(--soft);color:var(--todo)}
+.st.part{background:var(--partSoft);color:var(--part)}
+.st.done{background:var(--doneSoft);color:var(--done)}
+.mini{font-size:.78rem;color:var(--muted)}
+.field{display:flex;flex-direction:column;gap:6px;min-width:0}
+.field>label,.field>.lbl{font-weight:500}
+.hint{font-size:.82rem;color:var(--muted)}
+input[type=text],textarea,select{width:100%;border:1.5px solid var(--line);background:var(--surface);border-radius:10px;padding:10px 12px;min-height:46px}
+textarea{min-height:76px;resize:vertical}
+input:focus,textarea:focus,select:focus{border-color:var(--accent);outline:none}
+.seg{display:flex;flex-wrap:wrap;gap:6px}
+.seg button{border:1.5px solid var(--line);background:var(--surface);border-radius:999px;padding:7px 14px;min-height:40px}
+.seg button[aria-pressed="true"]{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+@media (max-width:520px){.row2{grid-template-columns:1fr}}
+.dept{border:1px solid var(--line);border-radius:12px;padding:12px;display:flex;flex-direction:column;gap:10px}
+.dept .dh{display:flex;justify-content:space-between;gap:8px;align-items:flex-start}
+.dept .dh b{font-weight:500}
+.dgrid{display:grid;grid-template-columns:140px 1fr;gap:10px}
+@media (max-width:520px){.dgrid{grid-template-columns:1fr}}
+.photos{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.photos img{width:84px;height:84px;object-fit:cover;border-radius:8px;border:1px solid var(--line);background:var(--soft)}
+.ph{position:relative}
+.ph button{position:absolute;top:-6px;inset-inline-end:-6px;width:24px;height:24px;border-radius:50%;border:0;background:var(--ink);color:var(--bg);font-size:.8rem;line-height:1}
+.upl{display:inline-flex;align-items:center;gap:6px;border:1.5px dashed var(--line);border-radius:10px;padding:8px 12px;min-height:44px;color:var(--muted);background:none}
+.btn{border:0;border-radius:10px;padding:11px 16px;font-weight:500;display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:46px}
+.btn.primary{background:var(--accent);color:var(--accentInk)}
+.btn.ghost{background:transparent;border:1px solid var(--line)}
+.btn.small{min-height:36px;padding:6px 12px;font-size:.88rem}
+.savebar{position:sticky;bottom:0;background:var(--surface);border-top:1px solid var(--line);padding-block:10px calc(10px + env(safe-area-inset-bottom,0px));padding-inline:14px;margin:0 -14px -14px;border-radius:0 0 14px 14px;display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.savebar .msg{flex:1;min-width:120px;font-size:.88rem;color:var(--muted)}
+.savebar .msg.ok{color:var(--done)}
+.savebar .msg.bad{color:var(--err)}
+.check{display:flex;gap:10px;align-items:center;font-weight:500}
+.check input{width:22px;height:22px;accent-color:var(--accent)}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+</style>
+
+<div class="wrap" id="app"></div>
+
+<script>
+/* Supabase project (the publishable key is meant to be public; writes are limited to the editors table by row-level security) */
+const SB_URL="",SB_KEY="";
+/* Buildings and departments from the hospital's public "Areas and buildings" sign */
+const BLD={
+"100":["יחידת אלקטרופיזיולוגיה","טיפול נמרץ לב","מחלקת גריאטריה","מחלקת קרדיולוגיה","מחלקת אורולוגיה","מחלקת פנימית א'","מחלקת פנימית ב'","מחלקת פנימית ג'","אקו לב","מעבדת כלי דם"],
+"200":["מלר\"ד – מיון","מיון ילדים","מכון דימות (רנטגן, US, CT, MRI)","מחלקת עיניים","מחלקת אף-אוזן-גרון","מחלקת פה ולסת","מרפאת סוכרת","מרפאת נפרולוגיה","היחידה לטיפול נמרץ","חדרי ניתוח","טיפול נמרץ ילדים","אשפוז יום ילדים","מחלקה אורתופדית","מחלקה כירורגית"],
+"300":["מרפאת עיניים"],"301":["מכון גסטרואנטרולוגיה"],"302":["המכון לבריאות האישה"],
+"400":["הנהלת בית החולים","רשומות רפואיות (400 א')","גזברות (400 ב')","משאבי אנוש (400 ג')","גבייה (400 ד')"],
+"402":["מרפאת מוהס ופלסטיקה"],"403":["מחלקת פנימית ה'"],"404":["מחלקה נוירולוגית"],"405":["בית מרקחת"],"406":["מחלקת פנימית ד'"],
+"407":["שירות סוציאלי ודיאטנית"],"408":["הפריה חוץ גופית (IVF)"],"409":["בית כנסת"],"410":["פגייה"],"411":["מחלקה פסיכיאטרית"],
+"412":["חדרי לידה"],"413":["יחידת צנתורים"],"414":["מיון נשים, הריון בסיכון, מחלקת נשים"],"415":["מכון אורולוגי"],"416":["יולדות – אם וילוד"],
+"417":["חדרי ניתוח אשפוז יום"],"418":["מרפאת נשים"],
+"500":["מרפאות חוץ","מכון המטולוגי (500 א')"],"501":["לשכת הבריאות"],"502":["המכון לפתולוגיה"],"503":["המכון האונקולוגי"],"504":["המכון לילד ולמתבגר"],"505":["מכון התפתחות הילד"],
+"600":["המכון לנפרולוגיה ויתר לחץ דם"],"602":["מוקדי קופות חולים"],"603":["בריאות הנפש למבוגרים – מרכז עוז"],"604":["מרפאת שיניים לחולים בסיכון גבוה"],
+"700":["מרכז שיקום","מחלקת שיקום","פיזיותרפיה","ריפוי בעיסוק","שיקום לב/ריאות","אשפוז יום שיקומי","בריכה טיפולית","מרפאת פרסונל"]
+};
+const GRP=n=>({1:"--g1",2:"--g1",3:"--g3",4:"--g3",5:"--g5",6:"--g6",7:"--g7"})[n[0]];
+const FLOORS=["-2","-1","0","1","2","3","4","5","6"];
+const fl=f=>f==="0"?"קרקע":f;
+
+const S={db:null,assets:null,status:"loading",docs:{},open:null,draft:null,msg:"",msgKind:"",saving:false,uploading:0,readOnly:true,user:null,editor:false,loginMsg:""};
+const photoUrl=id=>`${SB_URL}/storage/v1/object/public/photos/${id.split("/").map(encodeURIComponent).join("/")}`;
+const app=document.getElementById("app");
+const esc=s=>String(s??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+
+function blank(b){if(b==="paths")return {items:[]};return {entrance:"",entranceAccess:"",approach:"",approachNote:"",floors:[],elevators:"",elevNote:"",notes:"",photos:[],depts:Object.fromEntries(BLD[b].map((n,i)=>[String(i),{floor:"",howto:"",photos:[]}])),extra:[],done:false}}
+function merged(b){const d=S.docs[b];if(!d)return blank(b);if(b==="paths")return Object.assign(blank(b),JSON.parse(JSON.stringify(d)));const base=blank(b);return Object.assign(base,JSON.parse(JSON.stringify(d)),{depts:Object.assign(base.depts,JSON.parse(JSON.stringify(d.depts||{})))})}
+function statusOf(b){const d=S.docs[b];if(!d)return "todo";if(d.done)return "done";return "part"}
+const stLabel={todo:"לא התחיל",part:"בתהליך",done:"הושלם"};
+
+function render(){
+  if(S.open)return renderForm();
+  const keys=Object.keys(BLD);const c={todo:0,part:0,done:0};keys.forEach(k=>c[statusOf(k)]++);const n=keys.length;
+  app.innerHTML=`<header class="top"><div class="mark"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 4h6M8 4H6v17h12V4h-2"/><path d="M9 11l2 2 4-4M9 17h6"/></svg></div><div><h1>BarziGo מיפוי שטח</h1><p class="sub">טופס לאיסוף נתונים מהשטח: כניסות, קומות ומעליות בכל בניין</p></div></header>
+  ${S.status==="nodb"?`<div class="notice err">האתר עוד לא מחובר למסד הנתונים, או שאין חיבור לאינטרנט.</div>`:""}
+  ${S.status!=="nodb"?loginCard():""}
+  <div class="card how"><h2>איך ממלאים</h2><ol>
+    <li>בחרו בניין מהרשימה ולכו לכניסה הראשית שלו.</li>
+    <li>תארו איך מזהים את הכניסה וצלמו אותה.</li>
+    <li>לכל מחלקה: באיזו קומה היא, ואיך מגיעים אליה מהכניסה (מעלית, מסדרון, שלט).</li>
+    <li>שמרו. אפשר לחזור ולהשלים מתי שרוצים, וכשהבניין גמור סמנו "הושלם".</li></ol>
+    <p class="hint" style="margin:0">צלמו רק אזורים ציבוריים, בלי מטופלים ובלי אזורי אבטחה או צוות.</p></div>
+  <div class="card"><div class="bar" role="img" aria-label="${c.done} מתוך ${n} בניינים הושלמו"><span style="width:${c.done/n*100}%;background:var(--done)"></span><span style="width:${c.part/n*100}%;background:var(--part)"></span></div>
+    <div class="stats"><span><b>${c.done}</b> הושלמו</span><span><b>${c.part}</b> בתהליך</span><span><b>${c.todo}</b> לא התחילו</span><span>מתוך ${n} בניינים</span></div></div>
+  ${S.status==="loading"?`<p class="hint">טוען נתונים…</p>`:""}
+  <button class="bbtn" data-act="open" data-id="paths"><span class="num" style="--c:var(--g7)"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 20h5v-5h5v-5h5V5h3"/></svg></span><span class="t"><b>מדרגות ומכשולים בשבילים בחוץ</b><span class="mini">${(S.docs.paths&&S.docs.paths.items||[]).length} נקודות סומנו · בשביל המסלול הנגיש</span></span></button>
+  <ul class="blist">${keys.map(k=>{const s=statusOf(k),d=S.docs[k];return `<li><button class="bbtn" data-act="open" data-id="${k}"><span class="num" style="--c:var(${GRP(k)})">${k}</span><span class="t"><span class="st ${s}">${stLabel[s]}</span><span class="mini">${BLD[k].length===1?esc(BLD[k][0]):BLD[k].length+" מחלקות"}</span>${d&&d.updatedAt?`<span class="mini">עודכן ${new Date(d.updatedAt).toLocaleDateString("he-IL")}</span>`:""}</span></button></li>`}).join("")}</ul>`;
+}
+function loginCard(){
+  if(S.user)return `<div class="notice ${S.editor?"info":"err"}" style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap"><span>${S.editor?`מחוברים כ-${esc(S.user.email)}. אפשר למלא ולשמור.`:`המייל ${esc(S.user.email)} לא ברשימת העורכים. בקשו מניב להוסיף אותו.`}</span><button class="btn ghost small" data-act="logout">יציאה</button></div>`;
+  return `<div class="card"><h2>כניסה לעריכה</h2><p class="hint" style="margin:0">כתבו את המייל שלכם ונשלח אליו קישור כניסה. אין צורך בסיסמה.</p>
+    <div class="field"><label for="email">מייל</label><input type="text" id="email" inputmode="email" autocomplete="email" dir="ltr" placeholder="name@example.com"></div>
+    <button class="btn primary" data-act="login">שלחו לי קישור כניסה</button>${S.loginMsg?`<p class="hint" style="margin:0" role="status">${esc(S.loginMsg)}</p>`:""}</div>`;
+}
+function seg(name,val,opts){return `<div class="seg" role="group">${opts.map(([v,l])=>`<button type="button" data-seg="${name}" data-v="${esc(v)}" aria-pressed="${val===v}">${esc(l)}</button>`).join("")}</div>`}
+function photoBlock(path,list){
+  const imgs=(list||[]).map((id,i)=>`<span class="ph"><img src="${esc(photoUrl(id))}" alt="תמונה ${i+1}" loading="lazy"><button type="button" data-act="rmphoto" data-path="${path}" data-i="${i}" aria-label="הסרת תמונה">✕</button></span>`).join("");
+  const up=S.assets&&!S.readOnly?`<label class="upl" for="f-${path}"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.5"/></svg>הוספת תמונה</label><input class="sr" id="f-${path}" type="file" accept="image/*" capture="environment" data-photo="${path}">`:"";
+  return `<div class="photos">${imgs}${up}${!S.assets&&!imgs?`<span class="hint">העלאת תמונות זמינה אחרי כניסה לעריכה.</span>`:""}</div>`;
+}
+function saveBar(){return `<div class="savebar"><span class="msg ${S.msgKind}" role="status">${esc(S.uploading?"מעלה תמונה…":S.msg)}</span>
+      <button class="btn primary" data-act="save" ${S.saving||S.readOnly||!S.db?"disabled":""}>${S.saving?"שומר…":"שמירה"}</button></div>`}
+function renderPaths(){
+  const d=S.draft,ro=S.readOnly?"disabled":"";
+  app.innerHTML=`<div class="top"><button class="btn ghost small" data-act="close">חזרה לרשימה</button></div>
+  <div class="card"><h1>מדרגות ומכשולים בשבילים בחוץ</h1>
+    <p class="hint" style="margin:0">לכו בשבילים בין הבניינים, מהשערים ומהחניונים, וסמנו כל מקום שבו מי שבכיסא גלגלים או עם עגלה ייתקע: מדרגות, מדרכה בלי הנמכה או שיפוע תלול. נקודה אחת לכל מקום.</p>
+    ${d.items.length?"":`<p class="hint" style="margin:0">עוד לא סומנו נקודות.</p>`}
+    ${d.items.map((x,i)=>`<div class="dept"><div class="dh"><b>נקודה ${i+1}</b><button type="button" class="btn ghost small" data-act="rmitem" data-i="${i}" ${ro}>הסרה</button></div>
+      <div class="field"><label for="it-w-${i}">איפה זה?</label><textarea id="it-w-${i}" data-it="${i}" data-k="where" ${ro} placeholder="למשל: בשביל בין בניין 300 לבניין 301, ליד הספסלים">${esc(x.where)}</textarea></div>
+      <div class="field"><span class="lbl">מה יש שם?</span>${seg("items."+i+".kind",x.kind,[["stairs","מדרגות"],["curb","מדרכה בלי הנמכה"],["steep","שיפוע תלול"],["other","מכשול אחר"]])}</div>
+      <div class="field"><label for="it-a-${i}">אפשר לעקוף? איך?</label><textarea id="it-a-${i}" data-it="${i}" data-k="alt" ${ro} placeholder="למשל: יש רמפה 20 מטר שמאלה, ליד החניון">${esc(x.alt)}</textarea></div>
+      ${photoBlock("items."+i,x.photos)}</div>`).join("")}
+    <button type="button" class="btn ghost" data-act="additem" ${ro}>הוספת נקודה</button>
+    ${saveBar()}
+  </div>`;
+}
+function renderForm(){
+  if(S.open==="paths")return renderPaths();
+  const b=S.open,d=S.draft,ro=S.readOnly?"disabled":"";
+  app.innerHTML=`<div class="top"><button class="btn ghost small" data-act="close">חזרה לרשימה</button></div>
+  <div class="card"><div class="top"><span class="num" style="--c:var(${GRP(b)});height:36px;min-width:58px;font-size:1.1rem">${b}</span><h1>בניין ${b}</h1></div>
+    <h2>הכניסה הראשית</h2>
+    <div class="field"><label for="entrance">איך מזהים את הכניסה?</label><textarea id="entrance" data-f="entrance" ${ro} placeholder="למשל: דלת זכוכית מול החניון, ליד השלט הכחול 'בניין 200'">${esc(d.entrance)}</textarea></div>
+    <div class="field"><span class="lbl">נגישות הכניסה</span>${seg("entranceAccess",d.entranceAccess,[["flat","בלי מדרגות"],["ramp","יש רמפה"],["stairs","רק מדרגות"]])}</div>
+    <div class="field"><span class="lbl">הדרך מהשביל אל הכניסה</span>${seg("approach",d.approach,[["flat","בלי מדרגות"],["ramp","יש רמפה"],["stairs","יש מדרגות"]])}</div>
+    <div class="field"><label for="approachNote">אם יש מדרגות: אפשר לעקוף? איך?</label><input type="text" id="approachNote" data-f="approachNote" ${ro} value="${esc(d.approachNote)}" placeholder="למשל: רמפה מהצד של החניון"></div>
+    <div class="field"><span class="lbl">תמונות של הכניסה</span>${photoBlock("photos",d.photos)}</div>
+    <h2>קומות ומעליות</h2>
+    <div class="field"><span class="lbl">אילו קומות יש בבניין?</span><div class="seg" role="group">${FLOORS.map(f=>`<button type="button" data-floor="${f}" aria-pressed="${d.floors.includes(f)}">${fl(f)}</button>`).join("")}</div></div>
+    <div class="row2"><div class="field"><span class="lbl">מעליות</span>${seg("elevators",d.elevators,[["none","אין"],["1","אחת"],["2+","שתיים או יותר"]])}</div>
+      <div class="field"><label for="elevNote">איפה המעליות?</label><input type="text" id="elevNote" data-f="elevNote" ${ro} value="${esc(d.elevNote)}" placeholder="למשל: ישר מהכניסה, מימין"></div></div>
+    <h2>מחלקות בבניין</h2>
+    ${BLD[b].map((name,i)=>{const x=d.depts[i];return `<div class="dept"><div class="dh"><b>${esc(name)}</b></div>
+      <div class="dgrid"><div class="field"><label for="fl-${i}">קומה</label><select id="fl-${i}" data-df="${i}" data-k="floor" ${ro}><option value="">לא ידוע</option>${FLOORS.map(f=>`<option value="${f}"${x.floor===f?" selected":""}>${fl(f)}</option>`).join("")}</select></div>
+      <div class="field"><label for="hw-${i}">איך מגיעים מהכניסה?</label><textarea id="hw-${i}" data-df="${i}" data-k="howto" ${ro} placeholder="למשל: מעלית לקומה 2, יוצאים שמאלה, הדלת השלישית">${esc(x.howto)}</textarea></div></div>
+      ${photoBlock("depts."+i,x.photos)}</div>`}).join("")}
+    ${d.extra.map((x,i)=>`<div class="dept"><div class="dh"><div class="field" style="flex:1"><label for="ex-n-${i}">מחלקה נוספת</label><input type="text" id="ex-n-${i}" data-ex="${i}" data-k="name" ${ro} value="${esc(x.name)}" placeholder="שם המחלקה או השירות"></div><button type="button" class="btn ghost small" data-act="rmextra" data-i="${i}" ${ro}>הסרה</button></div>
+      <div class="dgrid"><div class="field"><label for="ex-f-${i}">קומה</label><select id="ex-f-${i}" data-ex="${i}" data-k="floor" ${ro}><option value="">לא ידוע</option>${FLOORS.map(f=>`<option value="${f}"${x.floor===f?" selected":""}>${fl(f)}</option>`).join("")}</select></div>
+      <div class="field"><label for="ex-h-${i}">איך מגיעים מהכניסה?</label><textarea id="ex-h-${i}" data-ex="${i}" data-k="howto" ${ro}>${esc(x.howto)}</textarea></div></div></div>`).join("")}
+    <button type="button" class="btn ghost" data-act="addextra" ${ro}>הוספת מחלקה או שירות שלא ברשימה</button>
+    <h2>הערות</h2>
+    <div class="field"><label for="notes">משהו נוסף שחשוב לדעת?</label><textarea id="notes" data-f="notes" ${ro} placeholder="שיפוצים, כניסה נוספת, שעות שבהן הכניסה סגורה, שירותים, מכונת קפה…">${esc(d.notes)}</textarea></div>
+    <label class="check"><input type="checkbox" id="done" data-f="done" ${d.done?"checked":""} ${ro}>הבניין הזה מופה עד הסוף</label>
+    ${saveBar()}
+  </div>`;
+}
+
+/* ---------- events ---------- */
+function setMsg(m,k=""){S.msg=m;S.msgKind=k;const el=document.querySelector(".savebar .msg");if(el){el.textContent=m;el.className="msg "+k}}
+document.addEventListener("click",async ev=>{
+  const el=ev.target.closest("[data-act],[data-seg],[data-floor]");if(!el||el.disabled)return;
+  if(el.dataset.seg){if(S.readOnly)return;const p=el.dataset.seg.split("."),v=el.dataset.v,o=p.length>1?S.draft[p[0]][p[1]]:S.draft,k=p[p.length-1];o[k]=o[k]===v?"":v;dirty();return}
+  if(el.dataset.floor){if(S.readOnly)return;const f=el.dataset.floor,a=S.draft.floors;S.draft.floors=a.includes(f)?a.filter(x=>x!==f):[...a,f].sort((x,y)=>x-y);dirty();return}
+  const a=el.dataset.act;
+  if(a==="open"){S.open=el.dataset.id;S.draft=merged(S.open);S.msg="";S.msgKind="";render();window.scrollTo({top:0});return}
+  if(a==="close"){if(S.msgKind==="warn"&&!S.leaveOk){S.leaveOk=true;setMsg("יש שינויים שלא נשמרו. לחצו שוב על 'חזרה' כדי לצאת בלי לשמור.","bad");return}S.leaveOk=false;S.open=null;S.draft=null;render();window.scrollTo({top:0});return}
+  if(a==="addextra"){S.draft.extra.push({name:"",floor:"",howto:""});dirty();return}
+  if(a==="rmextra"){S.draft.extra.splice(+el.dataset.i,1);dirty();return}
+  if(a==="additem"){S.draft.items.push({where:"",kind:"",alt:"",photos:[]});dirty();return}
+  if(a==="rmitem"){S.draft.items.splice(+el.dataset.i,1);dirty();return}
+  if(a==="rmphoto"){const list=getPhotos(el.dataset.path);list.splice(+el.dataset.i,1);dirty();return}
+  if(a==="save")return save();
+  if(a==="login"){const email=(document.getElementById("email").value||"").trim().toLowerCase();if(!/^\S+@\S+\.\S+$/.test(email)){S.loginMsg="המייל לא נראה תקין.";render();return}
+    el.disabled=true;const {error}=await S.db.auth.signInWithOtp({email,options:{emailRedirectTo:location.origin+location.pathname}});
+    S.loginMsg=error?"השליחה נכשלה. נסו שוב בעוד דקה.":"נשלח! פתחו את המייל מהטלפון הזה ולחצו על הקישור.";render();return}
+  if(a==="logout"){await S.db.auth.signOut();location.reload();return}
+});
+function dirty(){S.leaveOk=false;S.msg="יש שינויים שלא נשמרו";S.msgKind="warn";const y=window.scrollY;render();window.scrollTo({top:y})}
+document.addEventListener("input",ev=>{
+  const t=ev.target;if(!S.draft)return;
+  if(t.dataset.f&&t.type!=="checkbox"){S.draft[t.dataset.f]=t.value}
+  else if(t.dataset.df){S.draft.depts[t.dataset.df][t.dataset.k]=t.value}
+  else if(t.dataset.ex){S.draft.extra[+t.dataset.ex][t.dataset.k]=t.value}
+  else if(t.dataset.it){S.draft.items[+t.dataset.it][t.dataset.k]=t.value}
+  else return;
+  S.leaveOk=false;setMsg("יש שינויים שלא נשמרו","warn");S.msgKind="warn";
+});
+document.addEventListener("change",async ev=>{
+  const t=ev.target;if(!S.draft)return;
+  if(t.id==="done"){S.draft.done=t.checked;S.leaveOk=false;setMsg("יש שינויים שלא נשמרו","warn");S.msgKind="warn";return}
+  if(t.dataset.photo&&t.files&&t.files[0]){const path=t.dataset.photo,file=t.files[0];t.value="";await upload(path,file)}
+});
+function getPhotos(path){if(path==="photos")return S.draft.photos;const [g,i]=path.split(".");return g==="items"?S.draft.items[i].photos:S.draft.depts[i].photos}
+async function shrink(file){
+  try{const bmp=await createImageBitmap(file);const k=Math.min(1,1600/Math.max(bmp.width,bmp.height));const c=document.createElement("canvas");c.width=Math.round(bmp.width*k);c.height=Math.round(bmp.height*k);
+    c.getContext("2d").drawImage(bmp,0,0,c.width,c.height);return await new Promise(r=>c.toBlob(b=>r(b||file),"image/jpeg",.82))}catch(e){return file}
+}
+async function upload(path,file){
+  if(!S.assets)return;S.uploading++;setMsg("מעלה תמונה…");
+  try{const blob=await shrink(file),id=(S.open==="paths"?"paths":"b"+S.open)+"/"+crypto.randomUUID()+".jpg";
+    const {error}=await S.db.storage.from("photos").upload(id,blob,{contentType:"image/jpeg"});if(error)throw error;
+    getPhotos(path).push(id);S.uploading--;dirty();setMsg("התמונה הועלתה. לחצו 'שמירה' כדי לשמור אותה.","warn")}
+  catch(e){S.uploading--;setMsg("ההעלאה נכשלה. בדקו את החיבור ונסו שוב.","bad")}
+}
+async function save(){
+  if(!S.db||S.saving)return;S.saving=true;render();
+  const body=JSON.parse(JSON.stringify(S.draft));body.updatedAt=new Date().toISOString();
+  // keep each department's name with its answers, so the demo can match them
+  if(body.depts)for(const i in body.depts)body.depts[i].name=BLD[S.open][i];
+  const id=S.open==="paths"?"paths":"b"+S.open;
+  try{const {error}=await S.db.from("mapping").upsert({id,data:body,updated_at:body.updatedAt,updated_by:S.user.email});if(error)throw error;
+    S.docs[S.open]=body;S.saving=false;S.leaveOk=false;S.msg="נשמר. הנתונים כבר מופיעים באתר.";S.msgKind="ok"}
+  catch(e){S.saving=false;S.msg=e&&e.code==="42501"?"אין הרשאה לשמור. בקשו מניב להוסיף את המייל שלכם.":"השמירה נכשלה. בדקו את החיבור ונסו שוב.";S.msgKind="bad"}
+  const y=window.scrollY;render();window.scrollTo({top:y});
+}
+
+/* ---------- boot ---------- */
+render();
+(async()=>{
+  if(!SB_URL||!SB_KEY||!window.supabase){S.status="nodb";render();return}
+  const db=window.supabase.createClient(SB_URL,SB_KEY);S.db=db;
+  try{const {data:{session}}=await db.auth.getSession();
+    if(session){S.user=session.user;const {data}=await db.from("editors").select("email").eq("email",(session.user.email||"").toLowerCase());S.editor=!!(data&&data.length)}}catch(e){}
+  S.readOnly=!S.editor;S.assets=S.editor?true:null;
+  const {data,error}=await db.from("mapping").select("id,data");
+  if(error){S.status="nodb";render();return}
+  data.forEach(r=>{S.docs[r.id==="paths"?"paths":r.id.slice(1)]=r.data});S.status="ready";if(!S.open)render();
+})();
+</script>
