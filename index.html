@@ -1,0 +1,817 @@
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>BarziGo</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Rubik:wght@400;500;700&family=Secular+One&family=Noto+Sans+Arabic:wght@400;600&display=swap">
+<style>
+/* Layout: campus signage system. Controls panel beside a campus map; building groups keep the hospital's own color codes, the route is the yellow of its "you are here" marker */
+:root{
+  --bg:#edf1f1; --surface:#ffffff; --ink:#152226; --muted:#56676b; --line:#ccd7d7;
+  --ground:#e3e7e6; --campus:#c4cbcb; --road:#6a7476; --walk:#ebe8f6; --park:#8b9496;
+  --route:#f2b705; --routeCase:#1b2326; --link:#1565c0; --accent:#0a66d6; --accentInk:#ffffff; --accentSoft:#dce9fb; --brand:#0a6ad8; --brandInk:#0b2c5c; --pin:#e3242b;
+  --g1:#1d4fb8; --g3:#4f9a28; --g5:#e2531a; --g6:#4b2470; --badgeInk:#ffffff; --warn:#94480a; --warnSoft:#fbeedd; --soft:#eef3f2;
+  --display:"Secular One","Rubik","Noto Sans Arabic",system-ui,sans-serif;
+  --body:"Rubik","Noto Sans Arabic",system-ui,sans-serif;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#0b1517; --surface:#132124; --ink:#e2eeec; --muted:#93a8aa; --line:#25393c;
+  --ground:#0e1a1c; --campus:#1d2c2f; --road:#3b4c4f; --walk:#3a3f5c; --park:#2c3b3e;
+  --route:#f5c22c; --routeCase:#0b1517; --link:#8fb0ff; --accent:#5d9ff0; --accentInk:#061a33; --accentSoft:#16294a; --brand:#5d9ff0; --brandInk:#e6eefb; --pin:#f0545a;
+  --g1:#5a86e8; --g3:#7cbf4e; --g5:#f07a45; --g6:#9b6fcb; --badgeInk:#0b1517; --warn:#f0a35c; --warnSoft:#2d2114; --soft:#1a2b2e;
+  color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0b1517; --surface:#132124; --ink:#e2eeec; --muted:#93a8aa; --line:#25393c;
+  --ground:#0e1a1c; --campus:#1d2c2f; --road:#3b4c4f; --walk:#3a3f5c; --park:#2c3b3e;
+  --route:#f5c22c; --routeCase:#0b1517; --link:#8fb0ff; --accent:#5d9ff0; --accentInk:#061a33; --accentSoft:#16294a; --brand:#5d9ff0; --brandInk:#e6eefb; --pin:#f0545a;
+  --g1:#5a86e8; --g3:#7cbf4e; --g5:#f07a45; --g6:#9b6fcb; --badgeInk:#0b1517; --warn:#f0a35c; --warnSoft:#2d2114; --soft:#1a2b2e;
+  color-scheme:dark}
+html.big{font-size:20px}
+body{background:var(--bg);color:var(--ink);font-family:var(--body);font-size:1rem;line-height:1.5}
+*{box-sizing:border-box}
+button,select,input{font:inherit;color:inherit}
+button{cursor:pointer}
+button:disabled{opacity:.45;cursor:default}
+:focus-visible{outline:3px solid var(--link);outline-offset:2px;border-radius:6px}
+.wrap{max-width:1180px;margin:0 auto;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:12px 28px;display:flex;flex-direction:column;gap:14px}
+.top{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.brand{display:flex;align-items:center;gap:10px;min-width:0}
+.logo{width:50px;height:46px;border-radius:10px;background:#ffffff;display:grid;place-items:center;flex:none;border:1px solid var(--line)}
+.word{font-family:"Rubik",var(--body);font-weight:700;font-size:1.65rem;line-height:1;letter-spacing:-.01em;color:var(--brandInk)}
+.word em{font-style:normal;color:var(--brand)}
+.tag{font-size:.8rem;color:var(--muted);display:block;margin-top:2px}
+.ctrls{display:flex;gap:8px;align-items:center}
+.ctrls select,.iconbtn{height:40px;border:1px solid var(--line);background:var(--surface);border-radius:8px;padding:0 10px}
+.iconbtn[aria-pressed="true"]{background:var(--accent);color:var(--accentInk);border-color:var(--accent)}
+.demo{font-size:.82rem;color:var(--warn);background:var(--warnSoft);border-radius:8px;padding:8px 12px}
+.grid{display:grid;grid-template-columns:minmax(0,420px) minmax(0,1fr);gap:16px;align-items:start}
+.panel{display:flex;flex-direction:column;gap:14px;min-width:0}
+.mapcol{position:sticky;top:calc(env(safe-area-inset-top,0px) + 12px);display:flex;flex-direction:column;gap:10px;min-width:0;background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:12px}
+@media (max-width:860px){
+  .grid{grid-template-columns:minmax(0,1fr)}
+  .mapcol{position:static}
+  .grid.v-route .mapcol,.grid.v-steps .mapcol{order:-1}
+}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:14px;display:flex;flex-direction:column;gap:10px;min-width:0}
+.eyebrow{font-size:.74rem;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);font-weight:500}
+h1,h2,h3{font-family:var(--display);font-weight:400;margin:0;text-wrap:balance;line-height:1.2}
+h1{font-size:1.5rem} h2{font-size:1.2rem} h3{font-size:1.05rem}
+.here{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}
+.here .name{font-size:1.15rem;font-weight:700}
+.btn{border:0;border-radius:10px;padding:11px 16px;font-weight:500;display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:44px}
+.btn.primary{background:var(--accent);color:var(--accentInk)}
+.btn.ghost{background:transparent;border:1px solid var(--line)}
+.btn.soft{background:var(--accentSoft);color:var(--ink)}
+.btn.block{width:100%}
+.btn.small{min-height:34px;padding:6px 12px;font-size:.85rem}
+.search{position:relative}
+.search input{width:100%;height:54px;border-radius:12px;border:2px solid var(--line);background:var(--surface);padding-inline:46px 14px;font-size:1.05rem}
+.search input:focus{border-color:var(--accent);outline:none}
+.search svg{position:absolute;inset-inline-start:14px;top:50%;transform:translateY(-50%);color:var(--muted)}
+.soon{display:flex;gap:12px;align-items:flex-start;background:var(--soft);border-radius:12px;padding:10px 14px;font-size:.88rem}
+.soon b{display:block}
+.soon span{color:var(--muted)}
+.chips{display:flex;gap:8px;flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;padding-bottom:2px}
+.chips::-webkit-scrollbar{display:none}
+.cat{border:1px solid var(--line);background:var(--surface);border-radius:999px;padding:6px 14px;min-height:40px;flex:none;white-space:nowrap}
+.tiles{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+.tile{display:flex;flex-direction:column;align-items:flex-start;gap:8px;text-align:start;background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:12px;min-height:122px;min-width:0}
+.tile:hover{border-color:var(--accent)}
+.tile .ti{width:44px;height:44px;border-radius:12px;background:var(--c);color:var(--badgeInk);display:grid;place-items:center}
+.tile b{font-weight:500;line-height:1.3;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.tile .meta{display:flex;justify-content:space-between;align-items:center;gap:6px;width:100%;margin-top:auto}
+.btn.big{min-height:58px;font-size:1.1rem}
+.btn[aria-pressed="true"]{background:var(--accent);color:var(--accentInk)}
+.cat[aria-pressed="true"]{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+.list{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:6px}
+.item{display:flex;align-items:center;gap:12px;width:100%;text-align:start;background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:10px 12px;min-height:56px}
+.item:hover{border-color:var(--accent)}
+.item .t{flex:1;min-width:0;display:flex;flex-direction:column;gap:3px}
+.item .t b{font-weight:500}
+.mins{font-size:.85rem;color:var(--muted);white-space:nowrap;font-variant-numeric:tabular-nums}
+.sign{display:inline-flex;align-items:center;gap:6px;font-size:.78rem;color:var(--muted);white-space:nowrap}
+.sign i{font-style:normal;min-width:30px;height:18px;padding:0 5px;border-radius:4px;background:var(--c);color:var(--badgeInk);display:grid;place-items:center;font-weight:700;font-size:.72rem;font-family:var(--body);font-variant-numeric:tabular-nums}
+.empty{color:var(--muted);padding:8px 2px}
+.bubble{background:var(--soft);border-radius:14px 14px 14px 4px;padding:10px 12px;font-size:.92rem;max-width:36ch}
+.bubble .lnk{color:var(--link);text-decoration:underline;direction:ltr;unicode-bidi:isolate}
+.stations{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px}
+.station{display:flex;align-items:center;gap:8px;text-align:start;border:1px solid var(--line);background:var(--surface);border-radius:10px;padding:10px;min-height:48px}
+.station[aria-current="true"]{border-color:var(--accent);background:var(--accentSoft)}
+.muted{color:var(--muted)}
+.rowback{display:flex;align-items:center;gap:10px}
+.ft{display:grid;grid-template-columns:auto 1fr;gap:6px 12px;align-items:center}
+.ft .k{color:var(--muted);font-size:.85rem}
+.ft .v{font-weight:500;display:flex;gap:8px;flex-wrap:wrap;align-items:center;min-width:0}
+.sum{display:flex;gap:8px;flex-wrap:wrap}
+.pill{background:var(--soft);border-radius:999px;padding:5px 12px;font-size:.88rem;font-variant-numeric:tabular-nums;display:inline-flex;gap:6px;align-items:center}
+.steps{list-style:none;margin:0;padding:0;display:flex;flex-direction:column}
+.step{display:grid;grid-template-columns:36px 1fr auto;gap:10px;align-items:start;padding:10px 6px;border-bottom:1px solid var(--line);text-align:start;background:none;border-inline:0;border-top:0;width:100%}
+li:last-child .step{border-bottom:0}
+.step[aria-current="true"]{background:var(--accentSoft);border-radius:10px}
+.ic{width:36px;height:36px;border-radius:9px;background:var(--soft);display:grid;place-items:center;color:var(--ink)}
+.ic.arrive{background:var(--accent);color:var(--accentInk)}
+.ic.start{background:var(--route);color:var(--routeCase)}
+.step .tx{min-width:0;display:flex;flex-direction:column;gap:2px}
+.note{font-size:.82rem;color:var(--muted)}
+.step .d{font-size:.85rem;color:var(--muted);font-variant-numeric:tabular-nums;white-space:nowrap}
+.progress{height:6px;border-radius:3px;background:var(--line);overflow:hidden}
+.progress span{display:block;height:100%;background:var(--accent);transition:width .3s}
+.big{display:flex;flex-direction:column;gap:12px;align-items:flex-start}
+.big .ic{width:64px;height:64px;border-radius:16px}
+.big .ic svg{width:38px;height:38px}
+.big .say{font-size:1.4rem;font-weight:500;line-height:1.35;text-wrap:balance}
+.photo{border:2px dashed var(--line);border-radius:12px;padding:16px;display:flex;gap:10px;align-items:center;color:var(--muted);font-size:.85rem;width:100%}
+.navbtns{display:grid;grid-template-columns:1fr 2fr;gap:8px}
+.done{align-items:center;text-align:center}
+.done .ic{width:72px;height:72px;border-radius:50%}
+.fb{display:flex;gap:8px;justify-content:center;flex-wrap:wrap}
+.livebtns{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+@media (max-width:420px){.livebtns{grid-template-columns:1fr}}
+.gpsmsg{background:var(--soft);border-radius:10px;padding:10px 12px;font-size:.9rem}
+.mapttl{display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap}
+.map{width:100%;height:auto;display:block;border-radius:10px;max-width:100%}
+.map text{font-family:var(--body)}
+.map .bl{cursor:pointer}
+.map .bl:hover rect,.map .bl:focus rect{filter:brightness(1.15)}
+.legend{display:flex;gap:14px;flex-wrap:wrap;font-size:.78rem;color:var(--muted)}
+.legend span{display:inline-flex;gap:6px;align-items:center}
+.flow{stroke-dasharray:18 18;animation:flow 1s linear infinite}
+@keyframes flow{to{stroke-dashoffset:-36}}
+.pulse{animation:pulse 1.8s ease-out infinite;transform-box:fill-box;transform-origin:center}
+@keyframes pulse{0%{transform:scale(.6);opacity:.6}100%{transform:scale(1.9);opacity:0}}
+@media (prefers-reduced-motion:reduce){.flow,.pulse{animation:none}}
+.foot{font-size:.78rem;color:var(--muted);text-align:center;padding-top:6px}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+</style>
+
+<div class="wrap" id="app"></div>
+
+<script>
+const LANGS=["he","en","ar","ru"];
+const T={
+he:{tag:"ניווט חכם בבית החולים",demo:"אב-טיפוס של סטודנטים, לא אתר רשמי של בית החולים. המפה משורטטת לפי מפת המתחם הציבורית, והמסלולים משוערים ועדיין לא נבדקו בשטח.",lang:"שפה",big:"טקסט גדול",
+here:"אתם נמצאים כאן",scan:"סריקת QR",scanTitle:"סריקת קוד QR (הדגמה)",scanHint:"בפיילוט יוצבו מדבקות QR בנקודות האלה. בחרו נקודה כדי לדמות סריקה.",
+searchPh:"מחלקה, מרפאה או מספר בניין",searchLbl:"חיפוש יעד",popular:"יעדים נפוצים",results:"תוצאות",noRes:"לא נמצא יעד. נסו מילה אחרת, למשל \"מיון\", \"עיניים\" או מספר בניין כמו 405.",
+cat_all:"הכול",cat_er:"מיון",cat_clinic:"מרפאות",cat_ward:"מחלקות אשפוז",cat_test:"מכונים ובדיקות",cat_service:"שירותים",
+soonT:"מסלול נגיש",soonD:"בשלב הבא: אחרי שנסמן בשטח מדרגות, רמפות ומעליות.",bld:"בניין {b}",
+min:"דק'",m:"מ'",yourRoute:"המסלול שלכם",from:"מ-",to:"אל",back:"חזרה",startNav:"ניווט צעד אחר צעד",
+sumTime:"כ-{t} דק' הליכה",sumDist:"{d} מ'",directions:"הוראות",
+stepOf:"צעד {i} מתוך {n}",next:"הצעד הבא",prev:"הקודם",arrivedBtn:"הגעתי",allSteps:"כל ההוראות",
+photo:"בפיילוט: תמונה מהשטח לכל צעד, כדי לזהות את המקום בקלות",
+arrived:"הגעתם!",fbQ:"הצלחתם להגיע בקלות?",fbYes:"כן, בקלות",fbNo:"היה קשה",fbThanks:"תודה! המשוב עוזר לשפר את המסלולים.",newDest:"יעד חדש",
+already:"אתם כבר נמצאים ליד הבניין הזה.",
+smsTitle:"הדגמה: הגעה מהודעת זימון תור",smsBody:"שלום, תורך במרפאת עיניים (בניין 300) מחר בשעה 10:30. לניווט מחניון 1:",smsBtn:"פתיחת הקישור",
+mapTitle:"מפת המתחם",fit:"התמקדות במסלול",whole:"כל המתחם",legHere:"אתם כאן",legDest:"יעד",legRoute:"מסלול",legWalk:"שביל הולכי רגל",
+foot:"BarziGo · אב-טיפוס לדוגמה · כל הזכויות שמורות לניב ממן וסאן כהן © 2026",
+start:"נקודת יציאה: {a}",head:"לכו לכיוון {b}",straight:"המשיכו ישר עד {b}",right:"פנו ימינה והמשיכו עד {b}",left:"פנו שמאלה והמשיכו עד {b}",
+slightRight:"הטו קלות ימינה לכיוון {b}",slightLeft:"הטו קלות שמאלה לכיוון {b}",uturn:"הסתובבו לאחור והמשיכו עד {b}",
+arrive:"הגעתם ל{b}",inside:"בתוך הבניין עקבו אחרי השילוט אל: {d}",insideSoon:"את הקומה והמסלול בתוך הבניין נוסיף אחרי מיפוי בשטח.",
+k_gate:"שער",k_park:"חניון",k_info:"עמדת מידע"},
+en:{tag:"Smart hospital wayfinding",demo:"Student prototype, not an official hospital website. The map is traced from the public campus map; routes are estimates and have not been checked on site yet.",lang:"Language",big:"Large text",
+here:"You are here",scan:"Scan QR",scanTitle:"Scan a QR code (demo)",scanHint:"In the pilot, QR stickers will be placed at these points. Pick one to simulate a scan.",
+searchPh:"Department, clinic or building number",searchLbl:"Search for a destination",popular:"Popular destinations",results:"Results",noRes:"No destination found. Try another word, like \"emergency\", \"eye\" or a building number such as 405.",
+cat_all:"All",cat_er:"Emergency",cat_clinic:"Clinics",cat_ward:"Wards",cat_test:"Institutes & tests",cat_service:"Services",
+soonT:"Accessible route",soonD:"Next step: once stairs, ramps and elevators are mapped on site.",bld:"Building {b}",
+min:"min",m:"m",yourRoute:"Your route",from:"From",to:"To",back:"Back",startNav:"Step-by-step navigation",
+sumTime:"About {t} min walk",sumDist:"{d} m",directions:"Directions",
+stepOf:"Step {i} of {n}",next:"Next step",prev:"Previous",arrivedBtn:"I'm here",allSteps:"All directions",
+photo:"In the pilot: a real photo for every step, so the place is easy to recognize",
+arrived:"You've arrived!",fbQ:"Was it easy to find?",fbYes:"Yes, easily",fbNo:"It was hard",fbThanks:"Thanks! Feedback helps improve the routes.",newDest:"New destination",
+already:"You are already next to this building.",
+smsTitle:"Demo: arriving from an appointment text",smsBody:"Hello, your eye clinic appointment (Building 300) is tomorrow at 10:30. To navigate from Parking 1:",smsBtn:"Open the link",
+mapTitle:"Campus map",fit:"Focus on route",whole:"Whole campus",legHere:"You are here",legDest:"Destination",legRoute:"Route",legWalk:"Walkway",
+foot:"BarziGo · sample prototype · All rights reserved to Niv Maman and San Cohen © 2026",
+start:"Starting point: {a}",head:"Head toward {b}",straight:"Continue straight to {b}",right:"Turn right and continue to {b}",left:"Turn left and continue to {b}",
+slightRight:"Bear right toward {b}",slightLeft:"Bear left toward {b}",uturn:"Turn around and continue to {b}",
+arrive:"You have arrived at {b}",inside:"Inside the building, follow the signs to: {d}",insideSoon:"Floor and indoor route will be added after on-site mapping.",
+k_gate:"Gate",k_park:"Parking",k_info:"Info point"},
+ar:{tag:"التنقل الذكي في المستشفى",demo:"نموذج طلابي، وليس موقعاً رسمياً للمستشفى. الخريطة مرسومة وفق خريطة المجمّع العامة، والمسارات تقديرية ولم تُفحص ميدانياً بعد.",lang:"اللغة",big:"خط كبير",
+here:"أنت هنا",scan:"مسح QR",scanTitle:"مسح رمز QR (تجربة)",scanHint:"في المرحلة التجريبية ستُلصق رموز QR في هذه النقاط. اختر نقطة لمحاكاة المسح.",
+searchPh:"قسم، عيادة أو رقم مبنى",searchLbl:"البحث عن وجهة",popular:"وجهات شائعة",results:"النتائج",noRes:"لم يتم العثور على وجهة. جرّب كلمة أخرى مثل \"طوارئ\" أو \"عيون\" أو رقم مبنى مثل 405.",
+cat_all:"الكل",cat_er:"الطوارئ",cat_clinic:"العيادات",cat_ward:"الأقسام",cat_test:"المعاهد والفحوصات",cat_service:"الخدمات",
+soonT:"مسار مهيأ",soonD:"في المرحلة التالية: بعد تحديد الدرج والمنحدرات والمصاعد ميدانياً.",bld:"المبنى {b}",
+min:"دقيقة",m:"م",yourRoute:"مسارك",from:"من",to:"إلى",back:"رجوع",startNav:"التنقل خطوة بخطوة",
+sumTime:"نحو {t} دقيقة مشياً",sumDist:"{d} م",directions:"الإرشادات",
+stepOf:"الخطوة {i} من {n}",next:"الخطوة التالية",prev:"السابق",arrivedBtn:"وصلت",allSteps:"كل الإرشادات",
+photo:"في المرحلة التجريبية: صورة حقيقية لكل خطوة لتسهيل التعرف على المكان",
+arrived:"لقد وصلت!",fbQ:"هل كان الوصول سهلاً؟",fbYes:"نعم، بسهولة",fbNo:"كان صعباً",fbThanks:"شكراً! ملاحظاتك تساعد في تحسين المسارات.",newDest:"وجهة جديدة",
+already:"أنت موجود بالفعل بجانب هذا المبنى.",
+smsTitle:"تجربة: الوصول من رسالة الموعد",smsBody:"مرحباً، موعدك في عيادة العيون (المبنى 300) غداً الساعة 10:30. للتنقل من الموقف 1:",smsBtn:"فتح الرابط",
+mapTitle:"خريطة المجمّع",fit:"التركيز على المسار",whole:"كل المجمّع",legHere:"أنت هنا",legDest:"الوجهة",legRoute:"المسار",legWalk:"ممر مشاة",
+foot:"BarziGo · نموذج للتوضيح · جميع الحقوق محفوظة لنيف ممان وسان كوهين © 2026",
+start:"نقطة الانطلاق: {a}",head:"اتجه نحو {b}",straight:"تابع مباشرة حتى {b}",right:"انعطف يميناً وتابع حتى {b}",left:"انعطف يساراً وتابع حتى {b}",
+slightRight:"مِل قليلاً إلى اليمين نحو {b}",slightLeft:"مِل قليلاً إلى اليسار نحو {b}",uturn:"استدر للخلف وتابع حتى {b}",
+arrive:"لقد وصلت إلى {b}",inside:"داخل المبنى اتبع اللافتات إلى: {d}",insideSoon:"سنضيف الطابق والمسار الداخلي بعد المسح الميداني.",
+k_gate:"بوابة",k_park:"موقف",k_info:"نقطة معلومات"},
+ru:{tag:"Умная навигация по больнице",demo:"Студенческий прототип, не официальный сайт больницы. Карта нарисована по общедоступной схеме территории; маршруты примерные и ещё не проверены на месте.",lang:"Язык",big:"Крупный шрифт",
+here:"Вы здесь",scan:"Сканировать QR",scanTitle:"Сканирование QR-кода (демо)",scanHint:"В пилоте QR-наклейки будут размещены в этих точках. Выберите точку, чтобы сымитировать сканирование.",
+searchPh:"Отделение, клиника или номер корпуса",searchLbl:"Поиск направления",popular:"Популярные направления",results:"Результаты",noRes:"Ничего не найдено. Попробуйте другое слово, например «приёмный», «глаз» или номер корпуса, например 405.",
+cat_all:"Все",cat_er:"Приёмный покой",cat_clinic:"Клиники",cat_ward:"Отделения",cat_test:"Институты и обследования",cat_service:"Услуги",
+soonT:"Доступный маршрут",soonD:"Следующий этап: после разметки лестниц, пандусов и лифтов на месте.",bld:"Корпус {b}",
+min:"мин",m:"м",yourRoute:"Ваш маршрут",from:"Откуда",to:"Куда",back:"Назад",startNav:"Пошаговая навигация",
+sumTime:"Около {t} мин пешком",sumDist:"{d} м",directions:"Указания",
+stepOf:"Шаг {i} из {n}",next:"Дальше",prev:"Назад",arrivedBtn:"Я на месте",allSteps:"Все указания",
+photo:"В пилоте: реальное фото для каждого шага, чтобы легко узнать место",
+arrived:"Вы на месте!",fbQ:"Было легко найти?",fbYes:"Да, легко",fbNo:"Было трудно",fbThanks:"Спасибо! Отзывы помогают улучшать маршруты.",newDest:"Новый маршрут",
+already:"Вы уже рядом с этим корпусом.",
+smsTitle:"Демо: переход из SMS о записи",smsBody:"Здравствуйте, ваш приём в глазной клинике (корпус 300) завтра в 10:30. Навигация от парковки 1:",smsBtn:"Открыть ссылку",
+mapTitle:"Карта территории",fit:"Показать маршрут",whole:"Вся территория",legHere:"Вы здесь",legDest:"Цель",legRoute:"Маршрут",legWalk:"Пешеходная дорожка",
+foot:"BarziGo · демонстрационный прототип · Все права принадлежат Нив Маман и Сан Коэн © 2026",
+start:"Отправная точка: {a}",head:"Идите в сторону: {b}",straight:"Идите прямо до: {b}",right:"Поверните направо и идите до: {b}",left:"Поверните налево и идите до: {b}",
+slightRight:"Держитесь правее, к: {b}",slightLeft:"Держитесь левее, к: {b}",uturn:"Развернитесь и идите до: {b}",
+arrive:"Вы прибыли: {b}",inside:"Внутри корпуса идите по указателям: {d}",insideSoon:"Этаж и маршрут внутри корпуса добавим после обследования на месте.",
+k_gate:"Ворота",k_park:"Парковка",k_info:"Справочная"}
+};
+
+Object.assign(T.he,{live:"ניווט חי",liveSim:"הדמיית הליכה",liveGps:"ניווט לפי GPS",liveSimNote:"הדמיה: הנקודה זזה לאורך המסלול כמו מבקר שהולך, וההוראות מתחלפות לבד.",
+  inM:"עוד {d} מ'",then:"אחר כך: {s}",remain:"נותרו {d} מ' · כ-{t} דק'",pause:"השהיה",resume:"המשך",stop:"סיום הניווט",
+  gpsNo:"אין גישה למיקום בתצוגה הזו. ה-GPS יעבוד כשהאתר יעלה לכתובת משלו. בינתיים אפשר להפעיל הדמיית הליכה.",gpsWait:"מחפש אות GPS…",gpsAcc:"דיוק GPS: כ-{a} מ'",
+  calT:"כיול GPS (פעם אחת)",calD:"כדי לחבר את ה-GPS למפה, עמדו ליד כל אחד מהשערים ולחצו על הכפתור המתאים.",calG1:"אני עומד בשער 1",calG2:"אני עומד בשער 2",calSaved:"נשמר",calBad:"הכיול נראה לא מדויק. עמדו בדיוק ליד השער ונסו שוב.",
+  offRoute:"סטיתם מהמסלול. מחשב מסלול חדש מהמיקום שלכם."});
+Object.assign(T.en,{live:"Live navigation",liveSim:"Walking simulation",liveGps:"Navigate by GPS",liveSimNote:"Simulation: the dot moves along the route like a walking visitor, and the directions change on their own.",
+  inM:"{d} m to go",then:"Then: {s}",remain:"{d} m left · about {t} min",pause:"Pause",resume:"Resume",stop:"End navigation",
+  gpsNo:"Location is not available in this view. GPS will work once the site has its own address. Meanwhile, try the walking simulation.",gpsWait:"Looking for a GPS signal…",gpsAcc:"GPS accuracy: about {a} m",
+  calT:"GPS calibration (one time)",calD:"To link GPS to the map, stand next to each gate and press the matching button.",calG1:"I'm at Gate 1",calG2:"I'm at Gate 2",calSaved:"Saved",calBad:"The calibration looks off. Stand right next to the gate and try again.",
+  offRoute:"You left the route. Finding a new route from where you are."});
+Object.assign(T.ar,{live:"التنقل المباشر",liveSim:"محاكاة المشي",liveGps:"التنقل عبر GPS",liveSimNote:"محاكاة: تتحرك النقطة على المسار مثل زائر يمشي، وتتغير الإرشادات تلقائياً.",
+  inM:"تبقّى {d} م",then:"بعد ذلك: {s}",remain:"تبقّى {d} م · نحو {t} دقيقة",pause:"إيقاف مؤقت",resume:"متابعة",stop:"إنهاء التنقل",
+  gpsNo:"الموقع غير متاح في هذا العرض. سيعمل GPS عندما يكون للموقع عنوان خاص به. يمكنك الآن تجربة محاكاة المشي.",gpsWait:"جارٍ البحث عن إشارة GPS…",gpsAcc:"دقة GPS: نحو {a} م",
+  calT:"معايرة GPS (مرة واحدة)",calD:"لربط GPS بالخريطة، قف بجانب كل بوابة واضغط على الزر المناسب.",calG1:"أنا عند البوابة 1",calG2:"أنا عند البوابة 2",calSaved:"تم الحفظ",calBad:"تبدو المعايرة غير دقيقة. قف بجانب البوابة تماماً وحاول مجدداً.",
+  offRoute:"لقد خرجت عن المسار. جارٍ حساب مسار جديد من موقعك."});
+Object.assign(T.ru,{live:"Живая навигация",liveSim:"Симуляция ходьбы",liveGps:"Навигация по GPS",liveSimNote:"Симуляция: точка движется по маршруту, как идущий посетитель, а указания меняются сами.",
+  inM:"Ещё {d} м",then:"Затем: {s}",remain:"Осталось {d} м · около {t} мин",pause:"Пауза",resume:"Продолжить",stop:"Завершить навигацию",
+  gpsNo:"Геолокация недоступна в этом окне. GPS заработает, когда у сайта будет свой адрес. Пока попробуйте симуляцию ходьбы.",gpsWait:"Поиск сигнала GPS…",gpsAcc:"Точность GPS: около {a} м",
+  calT:"Калибровка GPS (один раз)",calD:"Чтобы связать GPS с картой, встаньте у каждых ворот и нажмите нужную кнопку.",calG1:"Я у ворот 1",calG2:"Я у ворот 2",calSaved:"Сохранено",calBad:"Калибровка неточная. Встаньте прямо у ворот и попробуйте ещё раз.",
+  offRoute:"Вы сошли с маршрута. Строю новый маршрут от вашего местоположения."});
+
+Object.assign(T.he,{go:"לאן הולכים?",voice:"הקראה בקול",z1:"בית החולים הראשי ומיון",z3:"מחלקות, מכונים, נשים ולידה",z5:"מרפאות חוץ ומכונים",z6:"נפרולוגיה, קופות חולים ובריאות הנפש"});
+Object.assign(T.en,{go:"Where to?",voice:"Read aloud",z1:"Main hospital & ER",z3:"Wards, institutes, women & birth",z5:"Outpatient clinics & institutes",z6:"Nephrology, HMOs & mental health"});
+Object.assign(T.ar,{go:"إلى أين؟",voice:"قراءة بصوت",z1:"المستشفى الرئيسي والطوارئ",z3:"أقسام ومعاهد، نساء وولادة",z5:"العيادات الخارجية والمعاهد",z6:"الكلى، صناديق المرضى والصحة النفسية"});
+Object.assign(T.ru,{go:"Куда идём?",voice:"Озвучка",z1:"Главный корпус и приёмный покой",z3:"Отделения, институты, роды",z5:"Поликлиника и институты",z6:"Нефрология, больничные кассы, психздоровье"});
+
+Object.assign(T.he,{accD:"בלי מדרגות: כניסות נגישות ומעליות, לפי המיפוי בשטח.",accOn:"מופעל",accOff:"הפעלה",accPill:"מסלול נגיש",
+  enter:"היכנסו לבניין: {e}",enterPlain:"היכנסו לבניין בכניסה הראשית",accFlat:"כניסה בלי מדרגות",accRamp:"בכניסה יש רמפה",
+  warnStairs:"שימו לב: לפי המיפוי, בכניסה הראשית יש רק מדרגות.",warnNoElev:"שימו לב: לפי המיפוי, אין מעלית בבניין.",
+  floorElev:"סעו במעלית לקומה {f}",floorAny:"הגיעו לקומה {f} במדרגות או במעלית",floorStairs:"הגיעו לקומה {f} במדרגות",elevAt:"המעליות: {w}",
+  warnApproach:"בדרך אל הכניסה יש מדרגות.",noAccRoute:"לא ידוע לנו על דרך בלי מדרגות ליעד הזה. מוצג המסלול הרגיל.",
+  deptArrive:"הגעתם אל {d}",fieldHe:"",sample:"דוגמה בלבד: פרטי הבניין הזה הומצאו להדגמה, עד שיגיע מיפוי מהשטח."});
+Object.assign(T.en,{accD:"No stairs: accessible entrances and elevators, based on the on-site survey.",accOn:"On",accOff:"Turn on",accPill:"Accessible route",
+  enter:"Enter the building: {e}",enterPlain:"Enter the building through the main entrance",accFlat:"Step-free entrance",accRamp:"The entrance has a ramp",
+  warnStairs:"Note: according to the survey, the main entrance has stairs only.",warnNoElev:"Note: according to the survey, this building has no elevator.",
+  floorElev:"Take the elevator to floor {f}",floorAny:"Go to floor {f} by stairs or elevator",floorStairs:"Take the stairs to floor {f}",elevAt:"Elevators: {w}",
+  warnApproach:"There are steps on the way to the entrance.",noAccRoute:"We don't know of a step-free way to this destination. Showing the regular route.",
+  deptArrive:"You have arrived at {d}",fieldHe:"Written on site in Hebrew",sample:"Example only: this building's details are made up for the demo until the on-site survey arrives."});
+Object.assign(T.ar,{accD:"بدون درج: مداخل مهيأة ومصاعد، وفق المسح الميداني.",accOn:"مفعّل",accOff:"تفعيل",accPill:"مسار مهيأ",
+  enter:"ادخل إلى المبنى: {e}",enterPlain:"ادخل إلى المبنى من المدخل الرئيسي",accFlat:"مدخل بدون درج",accRamp:"يوجد منحدر عند المدخل",
+  warnStairs:"انتبه: وفق المسح، المدخل الرئيسي فيه درج فقط.",warnNoElev:"انتبه: وفق المسح، لا يوجد مصعد في هذا المبنى.",
+  floorElev:"استقل المصعد إلى الطابق {f}",floorAny:"توجّه إلى الطابق {f} بالدرج أو المصعد",floorStairs:"انتقل بالدرج إلى الطابق {f}",elevAt:"المصاعد: {w}",
+  warnApproach:"يوجد درج في الطريق إلى المدخل.",noAccRoute:"لا نعرف طريقاً بدون درج إلى هذه الوجهة. يُعرض المسار العادي.",
+  deptArrive:"لقد وصلت إلى {d}",fieldHe:"مكتوب ميدانياً بالعبرية",sample:"للتوضيح فقط: تفاصيل هذا المبنى مختلقة للعرض حتى يصل المسح الميداني."});
+Object.assign(T.ru,{accD:"Без лестниц: доступные входы и лифты, по данным обследования.",accOn:"Включено",accOff:"Включить",accPill:"Доступный маршрут",
+  enter:"Войдите в корпус: {e}",enterPlain:"Войдите в корпус через главный вход",accFlat:"Вход без ступенек",accRamp:"У входа есть пандус",
+  warnStairs:"Внимание: по данным обследования, у главного входа только ступеньки.",warnNoElev:"Внимание: по данным обследования, в корпусе нет лифта.",
+  floorElev:"Поезжайте на лифте на этаж {f}",floorAny:"Пройдите на этаж {f} по лестнице или на лифте",floorStairs:"Пройдите по лестнице на этаж {f}",elevAt:"Лифты: {w}",
+  warnApproach:"По пути ко входу есть ступеньки.",noAccRoute:"Нам неизвестен путь без ступенек к этому месту. Показан обычный маршрут.",
+  deptArrive:"Вы прибыли: {d}",fieldHe:"Записано на месте на иврите",sample:"Только пример: данные этого корпуса выдуманы для демонстрации, пока нет обследования на месте."});
+
+/* ---------- Campus graph (coordinates traced from the public campus map; 1 unit ≈ 0.5 m) ---------- */
+const N={},ADJ={};
+function node(id,x,y,n,o={}){N[id]=Object.assign({id,x,y,n},o);ADJ[id]=[]}
+function edge(a,b,type="walk"){const A=N[a],B=N[b];const e={a,b,type,d:Math.hypot(A.x-B.x,A.y-B.y)*0.5};ADJ[a].push({to:b,e});ADJ[b].push({to:a,e})}
+const J=(he,en,ar,ru)=>[he,en,ar,ru];
+const SOUTH=J("הדרך הפנימית הדרומית","South inner road","الطريق الداخلي الجنوبي","Южная внутренняя дорога");
+const MAIN=J("השביל המרכזי","Main walkway","الممر الرئيسي","Главная аллея");
+const EAST=J("הדרך המזרחית","East road","الطريق الشرقي","Восточная дорога");
+const P600=J("השביל באזור 600","Path in area 600","الممر في المنطقة 600","Дорожка в зоне 600");
+// roads
+node("G1",1238,385,J("שער 1 (שד' דוד בן גוריון)","Gate 1 (David Ben Gurion Blvd)","البوابة 1 (جادة دافيد بن غوريون)","Ворота 1 (бульвар Давида Бен-Гуриона)"),{st:"gate"});
+node("G2",900,1232,J("שער 2 (רח' ההסתדרות)","Gate 2 (HaHistadrut St)","البوابة 2 (شارع الهستدروت)","Ворота 2 (ул. Ха-Гистадрут)"),{st:"gate"});
+node("r1",1175,420,J("הכניסה משער 1","Gate 1 entry road","طريق الدخول من البوابة 1","Въезд от ворот 1"));
+node("r2",1000,338,J("הכניסה לחניון 2","Parking 2 entrance","مدخل الموقف 2","Въезд на парковку 2"));
+node("r3",890,322,J("הדרך לחניון 3","Road to Parking 3","الطريق إلى الموقف 3","Дорога к парковке 3"));
+node("r4",785,352,J("הצומת הצפוני","North junction","التقاطع الشمالي","Северный перекрёсток"));
+node("r5",745,282,J("הדרך לחניון 4","Road to Parking 4","الطريق إلى الموقف 4","Дорога к парковке 4"));
+node("r6",580,252,J("הדרך ההיקפית הצפונית","North ring road","الطريق الدائري الشمالي","Северная кольцевая дорога"));
+node("r7",480,345,J("הפינה הצפון-מערבית","Northwest corner","الزاوية الشمالية الغربية","Северо-западный угол"));
+node("r8",300,650,J("הדרך המערבית","West road","الطريق الغربي","Западная дорога"));
+node("r25",275,808,J("הקצה המערבי של השביל המרכזי","West end of the main walkway","الطرف الغربي للممر الرئيسي","Западный конец главной аллеи"));
+node("r9",262,945,J("הפינה הדרום-מערבית","Southwest corner","الزاوية الجنوبية الغربية","Юго-западный угол"));
+node("r21",430,945,SOUTH);node("r23",560,945,SOUTH);node("r24",610,945,SOUTH);node("r19",720,945,SOUTH);
+node("r13",830,955,J("הצומת בין אזור 500 לאזור 600","Junction between areas 500 and 600","التقاطع بين المنطقتين 500 و600","Перекрёсток между зонами 500 и 600"));
+node("r14",862,1185,J("הכניסה משער 2","Gate 2 entry","المدخل من البوابة 2","Вход от ворот 2"));
+node("r10",722,500,J("הכיכר הקטנה ליד בניין 100","Small roundabout by Building 100","الدوار الصغير قرب المبنى 100","Малая развязка у корпуса 100"));
+node("r11",795,580,J("הכיכר","Roundabout","الدوار","Круговая развязка"));
+node("r12",810,805,J("הקצה המזרחי של השביל המרכזי","East end of the main walkway","الطرف الشرقي للممر الرئيسي","Восточный конец главной аллеи"));
+node("r15",1185,520,EAST);node("r16",1110,760,EAST);
+node("r17",1020,955,J("הצומת הדרום-מזרחי","Southeast junction","التقاطع الجنوبي الشرقي","Юго-восточный перекрёсток"));
+node("r22",300,1000,J("השביל המערבי באזור 500","West path in area 500","الممر الغربي في المنطقة 500","Западная дорожка в зоне 500"));
+// walkways
+node("p11",700,808,MAIN);node("p13",500,808,MAIN);node("p12",400,808,MAIN);node("p3",330,808,MAIN);
+node("p2",600,808,J("הצטלבות השבילים","Walkway crossing","تقاطع الممرات","Пересечение аллей"));
+node("p4",600,555,J("השביל ליד בניינים 100–200","Path by Buildings 100–200","الممر قرب المبنيين 100–200","Дорожка у корпусов 100–200"));
+node("p5",600,695,J("הצטלבות השבילים העליונה","Upper walkway crossing","تقاطع الممرات العلوي","Верхнее пересечение аллей"));
+node("p6",690,695,J("השביל לבניינים 300","Path to the 300 buildings","الممر إلى مباني 300","Дорожка к корпусам 300"));
+node("p7",470,695,J("השביל לבניינים 419–420","Path to Buildings 419–420","الممر إلى المبنيين 419–420","Дорожка к корпусам 419–420"));
+node("p8",600,928,J("השביל ליד בניין 404","Path by Building 404","الممر قرب المبنى 404","Дорожка у корпуса 404"));
+node("p9",845,1040,J("השביל לאורך בניין 500","Path along Building 500","الممر بمحاذاة المبنى 500","Дорожка вдоль корпуса 500"));
+node("p14",560,1100,J("השביל לבניינים 502–503","Path to Buildings 502–503","الممر إلى المبنيين 502–503","Дорожка к корпусам 502–503"));
+node("q3",850,640,J("שבילי הגן באזור 600","Garden paths, area 600","ممرات الحديقة في المنطقة 600","Садовые дорожки зоны 600"));
+node("q1",835,705,J("הכניסה לאזור 600","Entrance to area 600","مدخل المنطقة 600","Вход в зону 600"));
+node("q5",855,790,P600);node("q4",862,870,P600);
+// QR stations
+node("here",848,1110,J("עמדת מידע ליד מרפאות החוץ (500)","Info point by the Outpatient Clinics (500)","نقطة معلومات قرب العيادات الخارجية (500)","Справочная у поликлиники (500)"),{st:"info"});
+node("P1",950,1150,J("חניון 1","Parking 1","الموقف 1","Парковка 1"),{st:"park"});
+node("P2",950,418,J("חניון 2","Parking 2","الموقف 2","Парковка 2"),{st:"park"});
+node("P3",1010,240,J("חניון 3","Parking 3","الموقف 3","Парковка 3"),{st:"park"});
+node("P4",715,188,J("חניון 4","Parking 4","الموقف 4","Парковка 4"),{st:"park"});
+
+[["G1","r1"],["r1","r2"],["r2","r3"],["r3","r4"],["r4","r5"],["r5","r6"],["r6","r7"],["r7","r8"],["r8","r25"],["r25","r9"],["r9","r21"],["r21","r23"],["r23","r24"],["r24","r19"],["r19","r13"],["r13","r14"],["r14","G2"],
+ ["r4","r10"],["r10","r11"],["r11","r12"],["r12","r13"],["r1","r15"],["r15","r16"],["r16","r17"],["r17","r13"],["r9","r22"],
+ ["P1","r14"],["P2","r2"],["P3","r3"],["P4","r5"]].forEach(([a,b])=>edge(a,b,"road"));
+[["r12","p11"],["p11","p2"],["p2","p13"],["p13","p12"],["p12","p3"],["p3","r25"],["p4","p5"],["p5","p2"],["p2","p8"],["p8","r24"],["p7","p5"],["p5","p6"],["p4","r10"],
+ ["here","p9"],["p9","r13"],["here","r14"],["p14","r23"],["r11","q3"],["q3","q1"],["q1","q5"],["q5","q4"],["q4","r13"],["r12","q5"]].forEach(([a,b])=>edge(a,b));
+// outdoor segments with steps, skipped by the accessible route; none surveyed yet, e.g. ["p5","p6"]
+const STAIRS=[];
+STAIRS.forEach(([a,b])=>{const x=ADJ[a].find(o=>o.to===b);if(x)x.e.stairs=true});
+
+// buildings: number -> [door x,y, links, footprint rects]
+const GRP=n=>({1:"--g1",2:"--g1",3:"--g3",4:"--g3",5:"--g5",6:"--g6"})[String(n)[0]];
+const BLDS={
+ 100:[655,562,["p4","r10"],[[635,395,48,165]]],
+ 200:[560,552,["p4"],[[480,395,150,60],[430,445,200,78],[400,520,230,30]]],
+ 300:[686,650,["p6"],[[686,612,50,75]]],301:[686,707,["p6"],[[686,690,50,35]]],302:[686,752,["p11"],[[686,730,50,45]]],303:[747,872,["r12"],[[722,872,50,22]]],
+ 400:[680,815,["p11"],[[655,815,52,110]]],402:[629,815,["p2"],[[612,815,35,60]]],403:[597,760,["p2"],[[567,702,30,115]]],404:[581,815,["p2"],[[563,815,37,105]]],
+ 405:[521,808,["p13"],[[510,777,22,28]]],406:[487,815,["p13"],[[467,815,40,105]]],407:[486,808,["p13"],[[475,777,22,28]]],408:[438,815,["p12"],[[415,815,46,45]]],
+ 409:[419,808,["p12"],[[402,777,35,28]]],410:[384,815,["p12"],[[360,815,48,105]]],411:[386,808,["p12"],[[372,777,28,28]]],412:[296,808,["p3"],[[270,775,52,30],[300,805,22,95]]],
+ 413:[349,808,["p3"],[[335,777,28,28]]],414:[630,740,["p5"],[[605,720,50,35]]],415:[630,697,["p5"],[[605,683,52,30]]],416:[555,700,["p5"],[[543,702,24,60]]],
+ 417:[565,692,["p5"],[[540,568,48,125]]],418:[527,700,["p7"],[[515,702,24,60]]],419:[492,690,["p7"],[[455,565,75,125]]],420:[456,700,["p7"],[[427,702,58,60]]],
+ 421:[637,652,["p5"],[[595,615,85,35]]],422:[618,606,["p4","p5"],[[605,578,26,28]]],423:[438,920,["r21"],[[415,875,46,45]]],
+ 500:[830,1060,["p9"],[[712,955,118,235]]],501:[777,1190,["r14"],[[757,1155,40,35]]],502:[635,1125,["p14"],[[620,1125,30,35]]],503:[588,1100,["p14"],[[568,1085,40,85]]],505:[325,1110,["r22"],[[260,1110,130,55]]],
+ 600:[875,1000,["r13"],[[875,965,30,90]]],601:[877,850,["q4"],[[877,825,25,50]]],602:[870,795,["q5"],[[870,780,22,30]]],603:[905,900,["q4"],[[885,880,40,40]]],
+ 604:[918,848,["q4"],[[918,835,25,25]]],605:[912,790,["q5"],[[912,770,22,40]]],606:[880,640,["q3"],[[880,568,25,120]]]
+};
+for(const k in BLDS){const [x,y,links]=BLDS[k];node("B"+k,x,y,J("בניין "+k,"Building "+k,"المبنى "+k,"Корпус "+k),{bld:k});links.forEach(l=>edge("B"+k,l))}
+// unlabeled shapes on the public map (drawn for orientation only)
+const DECOR={"--g5":[[215,960,30,20],[275,960,90,15],[385,962,50,18],[440,958,40,10],[515,960,20,30],[568,950,110,35],[315,1020,45,60],[410,1020,50,95],[500,1060,50,100],[160,1105,90,45],[620,1045,70,65],[502,1150,50,25]],
+ "--g6":[[905,520,20,40],[945,520,20,40],[980,568,20,40],[1015,610,20,45],[930,700,18,45],[965,690,18,45],[998,680,18,45],[942,755,18,35]],"--g3":[[230,975,60,80]]};
+
+// departments (from the hospital's public "Areas and buildings" sign)
+const DEPTS=[
+["100","יחידת אלקטרופיזיולוגיה","Electrophysiology Unit","وحدة الفيزيولوجيا الكهربائية","Отделение электрофизиологии","test","לב קוצב"],
+["100","טיפול נמרץ לב","Intensive Cardiac Care Unit (ICCU)","العناية المركزة للقلب","Кардиореанимация","ward","לב"],
+["100","מחלקת גריאטריה","Geriatrics Department","قسم الشيخوخة","Гериатрическое отделение","ward","קשישים"],
+["100","מחלקת קרדיולוגיה","Cardiology Department","قسم أمراض القلب","Кардиологическое отделение","ward","לב"],
+["100","מחלקת אורולוגיה","Urology Department","قسم المسالك البولية","Урологическое отделение","ward",""],
+["100","מחלקת פנימית א'","Internal Medicine A","الباطنية أ","Терапия A","ward","פנימית"],
+["100","מחלקת פנימית ב'","Internal Medicine B","الباطنية ب","Терапия B","ward","פנימית"],
+["100","מחלקת פנימית ג'","Internal Medicine C","الباطنية ج","Терапия C","ward","פנימית"],
+["100","אקו לב","Echocardiography","تخطيط صدى القلب","Эхокардиография","test","לב"],
+["100","מעבדת כלי דם","Vascular Laboratory","مختبر الأوعية الدموية","Сосудистая лаборатория","test","דופלר"],
+["200","מלר\"ד – מיון","Emergency Room","قسم الطوارئ","Приёмный покой","er","מיון חירום דחוף מלרד"],
+["200","מיון ילדים","Pediatric Emergency","طوارئ الأطفال","Детский приёмный покой","er","ילדים ילד חירום"],
+["200","מכון דימות (רנטגן, US, CT, MRI)","Imaging Institute (X-ray, US, CT, MRI)","معهد التصوير (أشعة، US، CT، MRI)","Институт визуализации (рентген, УЗИ, КТ, МРТ)","test","צילום רנטגן אולטרסאונד סיטי ct mri הדמיה"],
+["200","מחלקת עיניים","Ophthalmology Department","قسم العيون","Офтальмологическое отделение","ward","עיניים עין"],
+["200","מחלקת אף-אוזן-גרון","ENT Department","قسم الأنف والأذن والحنجرة","ЛОР-отделение","ward","אאג אוזניים"],
+["200","מחלקת פה ולסת","Maxillofacial Surgery","قسم جراحة الفم والفكين","Челюстно-лицевая хирургия","ward","שיניים"],
+["200","מרפאת סוכרת","Diabetes Clinic","عيادة السكري","Диабетологическая клиника","clinic",""],
+["200","מרפאת נפרולוגיה","Nephrology Clinic","عيادة أمراض الكلى","Нефрологическая клиника","clinic","כליות"],
+["200","היחידה לטיפול נמרץ","Intensive Care Unit","وحدة العناية المركزة","Отделение реанимации","ward","icu"],
+["200","חדרי ניתוח","Operating Theatre","غرف العمليات","Операционные","ward","ניתוח"],
+["200","טיפול נמרץ ילדים","Pediatric Intensive Care Unit","العناية المركزة للأطفال","Детская реанимация","ward","ילדים"],
+["200","אשפוז יום ילדים","Pediatric Day Care","الرعاية النهارية للأطفال","Детский дневной стационар","ward","ילדים"],
+["200","מחלקה אורתופדית","Orthopedic Department","قسم العظام","Ортопедическое отделение","ward","אורתופדיה עצמות"],
+["200","מחלקה כירורגית","General Surgery Department","قسم الجراحة العامة","Отделение общей хирургии","ward","כירורגיה ניתוח"],
+["300","מרפאת עיניים","Ophthalmic Clinic","عيادة العيون","Глазная клиника","clinic","עיניים עין"],
+["301","מכון גסטרואנטרולוגיה","Gastroenterology Institute","معهد أمراض الجهاز الهضمي","Институт гастроэнтерологии","test","גסטרו קולונוסקופיה"],
+["302","המכון לבריאות האישה (מכון השד, ממוגרפיה, US)","Women's Health Institute (breast, mammography, US)","معهد صحة المرأة (الثدي، تصوير الثدي، US)","Институт женского здоровья (маммология, УЗИ)","test","ממוגרפיה שד"],
+["400","הנהלת בית החולים","Hospital Management","إدارة المستشفى","Администрация больницы","service","הנהלה"],
+["400","רשומות רפואיות (400 א')","Medical Records (400A)","السجلات الطبية (400 أ)","Медицинские записи (400A)","service","תיק רפואי סיכום"],
+["400","גבייה (400 ד')","Collection (400D)","الجباية (400 د)","Отдел оплаты (400D)","service","תשלום"],
+["402","מרפאת מוהס ופלסטיקה","Plastic Surgery & Mohs Clinic","عيادة الجراحة التجميلية وموس","Пластическая хирургия и Мохс","clinic","פלסטיקה"],
+["403","מחלקת פנימית ה'","Internal Medicine E","الباطنية هـ","Терапия E","ward","פנימית"],
+["404","מחלקה נוירולוגית","Neurology Department","قسم الأعصاب","Неврологическое отделение","ward","נוירולוגיה"],
+["405","בית מרקחת","Pharmacy","صيدلية","Аптека","service","תרופות"],
+["406","מחלקת פנימית ד'","Internal Medicine D","الباطنية د","Терапия D","ward","פנימית"],
+["407","שירות סוציאלי ודיאטנית","Social Service & Nutrition","الخدمات الاجتماعية والتغذية","Социальная служба и диетология","service","עובדת סוציאלית תזונה"],
+["408","הפריה חוץ גופית (IVF)","In Vitro Fertilization – IVF","وحدة الإخصاب IVF","ЭКО","clinic","הפריה ivf פוריות"],
+["409","בית כנסת","Synagogue","الكنيس","Синагога","service","תפילה"],
+["410","פגייה","Neonatal & Premature ICU","العناية المركزة لحديثي الولادة والخدّج","Отделение недоношенных","ward","פגים תינוק"],
+["411","מחלקה פסיכיאטרית","Psychiatry Department","قسم الطب النفسي","Психиатрическое отделение","ward",""],
+["412","חדרי לידה","Delivery Rooms","غرف الولادة","Родильный блок","ward","לידה יולדת צירים"],
+["413","יחידת צנתורים","Cardiac Catheterization Unit","وحدة قسطرة القلب","Отделение катетеризации сердца","test","צנתור לב"],
+["414","מיון נשים ומחלקת נשים","Gynecology ER & Department","طوارئ النساء وقسم أمراض النساء","Гинекологический приёмный покой и отделение","er","נשים הריון בסיכון גינקולוגיה מיון"],
+["415","מכון אורולוגי","Urology Institute","معهد المسالك البولية","Урологический институт","test",""],
+["416","יולדות – אם וילוד","Maternity & Newborn","قسم الأم والمولود","Отделение матери и новорождённого","ward","יולדות תינוק"],
+["417","ניתוחי אשפוז יום","Surgical Daycare","العمليات النهارية","Дневная хирургия","ward","ניתוח"],
+["418","מרפאת נשים","Gynecology Clinic","عيادة النساء","Гинекологическая клиника","clinic","נשים"],
+["500","מרפאות חוץ","Outpatient Clinics","العيادات الخارجية","Амбулаторные клиники","clinic","מרפאה"],
+["500","מכון המטולוגי (500 א')","Hematology Institute (500A)","معهد أمراض الدم (500 أ)","Гематологический институт (500A)","test","דם"],
+["501","לשכת הבריאות","Health Bureau","مكتب الصحة","Окружное бюро здравоохранения","service",""],
+["502","המכון לפתולוגיה","Pathology Institute","معهد علم الأمراض","Институт патологии","test",""],
+["503","המכון האונקולוגי","Oncology Institute","معهد الأورام","Онкологический институт","clinic","אונקולוגיה סרטן כימותרפיה"],
+["505","מכון התפתחות הילד","Child Development Institute","معهد نمو الطفل","Институт развития ребёнка","clinic","ילדים התפתחות"],
+["600","המכון לנפרולוגיה ויתר לחץ דם","Nephrology & Hypertension Institute","معهد الكلى وضغط الدم","Институт нефрологии и гипертонии","test","כליות דיאליזה לחץ דם"],
+["602","מוקדי קופות חולים","HMO Centers","مراكز صناديق المرضى","Центры больничных касс","service","קופה כללית מכבי מאוחדת לאומית"],
+["603","בריאות הנפש למבוגרים – מרכז עוז","Adult Mental Health – Oz Center","مركز الصحة النفسية للبالغين – عوز","Психическое здоровье взрослых – центр «Оз»","clinic","נפש"],
+["604","מרפאת שיניים לחולים בסיכון גבוה","Dental Clinic for High-Risk Patients","عيادة أسنان للمرضى ذوي الخطورة العالية","Стоматология для пациентов группы риска","clinic","שיניים"]
+].map((r,i)=>({id:"d"+i,b:r[0],n:r.slice(1,5),cat:r[5],k:r[6]}));
+const D=Object.fromEntries(DEPTS.map(d=>[d.id,d]));
+const byName=(b,he)=>DEPTS.find(d=>d.b===b&&d.n[0].startsWith(he)).id;
+// quick-pick tiles on the home screen: [department, icon]
+const QUICK=[[byName("200","מלר"),"er"],[byName("200","מיון ילדים"),"kid"],[byName("500","מרפאות חוץ"),"clinic"],[byName("200","מכון דימות"),"scan"],
+ [byName("405","בית"),"pill"],[byName("412","חדרי"),"heart"],[byName("602","מוקדי"),"card"],[byName("503","המכון"),"ribbon"]];
+// landmarks labeled on the map: [building, icon, names]
+const LANDMARKS=[["200","er",J("מיון","ER","الطوارئ","Приёмный покой")],["500","clinic",J("מרפאות חוץ","Outpatient clinics","العيادات الخارجية","Поликлиника")],
+ ["412","heart",J("חדרי לידה","Delivery rooms","غرف الولادة","Родильный блок")],["602","card",J("קופות חולים","HMO centers","صناديق المرضى","Больничные кассы")]];
+const STATIONS=["here","G1","G2","P1","P2","P3","P4"];
+const HASH={here:"here",gate1:"G1",gate2:"G2",p1:"P1",p2:"P2",p3:"P3",p4:"P4"};
+const CATS=["all","er","clinic","ward","test","service"];
+
+/* ---------- Indoor data (from the field-mapping form, artifact USCPMARqK65pkog77rFpub, collection "mapping") ----------
+   building -> {entrance, entranceAccess: flat|ramp|stairs, approach: flat|ramp|stairs, approachNote, elevators: none|1|2+, elevNote,
+                depts: {Hebrew department name as in DEPTS: {floor, howto}}, sample?: true when made up for the demo}
+   Free text is in Hebrew, as written on site. Buildings without an entry keep the "follow the signs" ending. */
+const INDOOR={
+ "300":{sample:true,entrance:"דלת הזכוכית מול השביל, מתחת לשלט 'בניין 300'",entranceAccess:"ramp",elevators:"1",elevNote:"מימין לדלפק הקבלה",
+   depts:{"מרפאת עיניים":{floor:"1",howto:"ביציאה מהמעלית פנו שמאלה. המרפאה בסוף המסדרון."}}}
+};
+// a building whose approach path has steps is closed to the accessible route
+for(const b in INDOOR)if(INDOOR[b].approach==="stairs"&&ADJ["B"+b])ADJ["B"+b].forEach(o=>o.e.stairs=true);
+
+/* ---------- State ---------- */
+const S={lang:"he",from:"here",to:null,big:false,acc:false,voice:false,view:"home",cat:"all",q:"",step:0,sel:null,scan:false,fb:null,whole:false};
+try{const p=JSON.parse(localStorage.getItem("barzigo2")||"{}");if(LANGS.includes(p.lang))S.lang=p.lang;S.big=!!p.big;S.acc=!!p.acc;S.voice=!!p.voice}catch(e){}
+function save(){try{localStorage.setItem("barzigo2",JSON.stringify({lang:S.lang,big:S.big,acc:S.acc,voice:S.voice}))}catch(e){}}
+const VLANG={he:"he-IL",en:"en-US",ar:"ar-SA",ru:"ru-RU"};
+function say(text){try{if(!window.speechSynthesis)return;speechSynthesis.cancel();const u=new SpeechSynthesisUtterance(text);u.lang=VLANG[S.lang];speechSynthesis.speak(u)}catch(e){}}
+
+const LI=()=>LANGS.indexOf(S.lang);
+const nm=n=>n.n[LI()];
+function t(k,v={}){let s=(T[S.lang][k]??T.he[k]??k);for(const x in v)s=s.split("{"+x+"}").join(v[x]);return s}
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const sign=b=>`<span class="sign" style="--c:var(${GRP(b)})"><i>${b}</i>${esc(t("bld",{b}))}</span>`;
+const stKind=n=>({gate:t("k_gate"),park:t("k_park"),info:t("k_info")})[n.st]||"";
+
+/* ---------- Routing ---------- */
+// accessible mode avoids steps; when no step-free way exists, fall back to the regular route and flag it
+function findRoute(from,to){
+  const R=shortest(from,to,S.acc);if(R||!S.acc)return R;
+  const F=shortest(from,to,false);if(F)F.noAcc=true;return F;
+}
+function shortest(from,to,acc){
+  const dist={},prev={},pe={},Q=new Set(Object.keys(N));for(const k of Q)dist[k]=Infinity;dist[from]=0;
+  while(Q.size){let u=null,b=Infinity;for(const k of Q)if(dist[k]<b){b=dist[k];u=k}if(u===null||u===to)break;Q.delete(u);
+    if(N[u].bld&&u!==from)continue; // never walk through a building
+    for(const {to:v,e} of ADJ[u]){if(acc&&e.stairs)continue;const w=dist[u]+e.d;if(w<dist[v]){dist[v]=w;prev[v]=u;pe[v]=e}}}
+  if(dist[to]===Infinity)return null;
+  const path=[to],edges=[];let c=to;while(c!==from){edges.unshift(pe[c]);c=prev[c];path.unshift(c)}
+  const walk=edges.reduce((s,e)=>s+e.d,0);
+  return {path,edges,walk:Math.round(walk/10)*10,mins:Math.max(1,Math.round(walk/1.2/60))};
+}
+function buildSteps(R,dept){
+  const P=R.path.map(id=>N[id]),st=[];
+  st.push({kind:"start",text:t("start",{a:nm(P[0])}),seg:[0,0],dist:0});
+  let heading=null,cur=null;
+  for(let i=0;i<R.edges.length;i++){
+    const a=P[i],c=P[i+1],e=R.edges[i],v=[c.x-a.x,c.y-a.y];let kind;
+    if(heading===null)kind="head";
+    else{const cr=heading[0]*v[1]-heading[1]*v[0],dt=heading[0]*v[0]+heading[1]*v[1];const ang=Math.atan2(cr,dt)*180/Math.PI,ab=Math.abs(ang);
+      kind=ab<25?"straight":ab<60?(ang>0?"slightRight":"slightLeft"):ab<150?(ang>0?"right":"left"):"uturn"}
+    const sameName=cur&&cur.n&&nm(cur.n)===nm(c);
+    if(cur&&cur.walk&&(kind==="straight"||sameName)&&!c.bld){cur.dist+=e.d;cur.seg[1]=i+1;cur.n=c;cur.text=t(cur.tpl,{b:nm(c)})}
+    else{cur={walk:true,kind,tpl:kind,n:c,dist:e.d,seg:[i,i+1],text:t(kind,{b:nm(c)})};st.push(cur)}
+    heading=v;
+  }
+  const L=P[P.length-1],ins=indoorSteps(dept),end=[P.length-1,P.length-1];
+  if(ins){st.push({kind:"arrive",text:t("arrive",{b:nm(L)}),note:INDOOR[dept.b].sample?t("sample"):"",seg:end,dist:0});ins.forEach(s=>st.push(Object.assign(s,{seg:end,dist:0})))}
+  else st.push({kind:"arrive",text:t("arrive",{b:nm(L)}),note:t("inside",{d:nm(dept)}),note2:t("insideSoon"),seg:end,dist:0});
+  const cum=[0];R.edges.forEach((e,i)=>cum.push(cum[i]+e.d));R.cum=cum;R.total=cum[cum.length-1];
+  st.forEach(s=>s.endM=cum[s.seg[1]]);
+  return st;
+}
+// steps from the building entrance to the department, when the building has been mapped
+function indoorSteps(dept){
+  const x=INDOOR[dept.b];if(!x)return null;
+  const di=(x.depts||{})[dept.n[0]]||{},tr=t("fieldHe"),st=[];
+  const apr=x.approach==="stairs"?t("warnApproach")+(x.approachNote?" "+x.approachNote:""):"";
+  st.push({kind:"enter",text:x.entrance?t("enter",{e:x.entrance}):t("enterPlain"),note:[{flat:t("accFlat"),ramp:t("accRamp"),stairs:t("warnStairs")}[x.entranceAccess],apr].filter(Boolean).join(" · "),note2:x.entrance||x.approachNote?tr:""});
+  if(di.floor&&di.floor!=="0"){const noEl=x.elevators==="none";
+    st.push({kind:"floor",text:t(noEl?"floorStairs":S.acc?"floorElev":"floorAny",{f:di.floor}),note:noEl?(S.acc?t("warnNoElev"):""):x.elevNote?t("elevAt",{w:x.elevNote}):"",note2:!noEl&&x.elevNote?tr:""})}
+  if(di.howto)st.push({kind:"inside",text:di.howto,note:tr});
+  st.push({kind:"dept",text:t("deptArrive",{d:nm(dept)})});
+  return st;
+}
+
+/* ---------- Icons ---------- */
+const ICON={
+  head:'<path d="M12 20V5M6 11l6-6 6 6"/>',straight:'<path d="M12 20V5M6 11l6-6 6 6"/>',
+  right:'<path d="M6 20v-7a4 4 0 0 1 4-4h9M15 5l4 4-4 4"/>',left:'<path d="M18 20v-7a4 4 0 0 0-4-4H5M9 5L5 9l4 4"/>',
+  slightRight:'<path d="M8 20v-6l8-8M10 6h6v6"/>',slightLeft:'<path d="M16 20v-6L8 6M14 6H8v6"/>',
+  uturn:'<path d="M8 20V9a4 4 0 0 1 8 0v5M12 11l4 4 4-4"/>',
+  start:'<circle cx="12" cy="12" r="3.5"/><circle cx="12" cy="12" r="8"/>',
+  arrive:'<path d="M12 21s-6-6.2-6-11a6 6 0 0 1 12 0c0 4.8-6 11-6 11z"/><circle cx="12" cy="10" r="2.2"/>',
+  search:'<circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/>',
+  qr:'<rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><path d="M14 14h3v3h-3zM20 14v.01M14 20h.01M17 20h4v-3"/>',
+  wheel:'<circle cx="12" cy="4.5" r="1.8"/><path d="M11 8v6h5l2 5M11 11h5"/><path d="M8.5 11.5a5 5 0 1 0 7 6"/>',
+  camera:'<path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.5"/>',
+  back:'<path d="M9 6l6 6-6 6"/>',
+  pin:'<path d="M12 21s-6-6.2-6-11a6 6 0 0 1 12 0c0 4.8-6 11-6 11z"/><circle cx="12" cy="10" r="2.2"/>',
+  gps:'<circle cx="12" cy="12" r="3"/><circle cx="12" cy="12" r="7.5"/><path d="M12 2v2.5M12 19.5V22M2 12h2.5M19.5 12H22"/>',
+  walk:'<circle cx="13" cy="4" r="1.8"/><path d="M10 21l2-6 3 3v3M9 12l2-4 3 1 2 3M11 8l-1 5"/>',
+  enter:'<path d="M4 21h16M7 21V4h10v17"/><circle cx="14" cy="12.5" r="1"/>',
+  floor:'<rect x="5" y="3" width="14" height="18" rx="2"/><path d="M9 9l3-3 3 3M9 15l3 3 3-3"/>',
+  er:'<path d="M10 4h4v6h6v4h-6v6h-4v-6H4v-4h6z"/>',
+  kid:'<circle cx="12" cy="6" r="3"/><path d="M8 21v-6l-3-3M16 21v-6l3-3M8 12h8v4H8z"/>',
+  clinic:'<path d="M6 3v6a4 4 0 0 0 8 0V3M10 13v3a4 4 0 0 0 8 0v-2"/><circle cx="18" cy="12" r="2"/>',
+  scan:'<rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="12" cy="12" r="4"/><path d="M12 10v4M10 12h4"/>',
+  pill:'<path d="M10.5 3.5a5 5 0 0 1 7 7l-7 7a5 5 0 0 1-7-7z"/><path d="M7 7l7 7"/>',
+  heart:'<path d="M12 20s-7-4.5-7-10a4 4 0 0 1 7-2.5A4 4 0 0 1 19 10c0 5.5-7 10-7 10z"/>',
+  card:'<rect x="3" y="5" width="18" height="14" rx="2"/><path d="M7 10h6M7 14h4"/>',
+  ribbon:'<path d="M12 3a4 4 0 0 0-4 4c0 3 4 7 4 7s4-4 4-7a4 4 0 0 0-4-4zM9.5 12L6 21M14.5 12L18 21"/>',
+  sound:'<path d="M4 9h4l5-4v14l-5-4H4z"/><path d="M16 9a4 4 0 0 1 0 6M18.5 6.5a8 8 0 0 1 0 11"/>'
+};
+ICON.inside=ICON.walk;ICON.dept=ICON.arrive;
+const ico=(k,s=22)=>`<svg width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICON[k]}</svg>`;
+
+/* ---------- Views ---------- */
+const app=document.getElementById("app");
+function header(){
+  const opts=[["he","עברית"],["en","English"],["ar","العربية"],["ru","Русский"]].map(([v,l])=>`<option value="${v}"${v===S.lang?" selected":""}>${l}</option>`).join("");
+  return `<header class="top"><div class="brand"><div class="logo"><svg width="44" height="40" viewBox="0 0 110 100" aria-hidden="true"><path d="M8 40h22v40H8zM80 40h22v40H80z" fill="#c9dcf2"/><path d="M6 38l2-3h22v5H6zM80 35h22l2 3v2H80z" fill="#1565c0"/><path d="M30 18h50v62H30z" fill="#ffffff" stroke="#c9dcf2" stroke-width="2"/><path d="M27 20l7-7h42l7 7" fill="none" stroke="#1565c0" stroke-width="5" stroke-linejoin="round"/><path d="M51 24h8v7h7v8h-7v7h-8v-7h-7v-8h7z" fill="#e3242b"/><rect x="43" y="56" width="24" height="24" fill="#1565c0"/><rect x="49" y="62" width="5" height="18" fill="#3d9bf0"/><rect x="56" y="62" width="5" height="18" fill="#3d9bf0"/><rect x="12" y="46" width="6" height="8" fill="#3d9bf0"/><rect x="20" y="46" width="6" height="8" fill="#3d9bf0"/><rect x="12" y="60" width="6" height="8" fill="#3d9bf0"/><rect x="20" y="60" width="6" height="8" fill="#3d9bf0"/><rect x="84" y="46" width="6" height="8" fill="#3d9bf0"/><path d="M55 80c-4 4-26 3-26 8s40 3 50 6" fill="none" stroke="#1565c0" stroke-width="5" stroke-linecap="round"/><path d="M95 52a12 12 0 0 0-24 0c0 8 12 22 12 22s12-14 12-22z" fill="#e3242b" stroke="#ffffff" stroke-width="2.5"/><circle cx="83" cy="52" r="4.5" fill="#ffffff"/><ellipse cx="85" cy="92" rx="12" ry="4" fill="#1565c0"/></svg></div><div><div class="word" dir="ltr">Barzi<em>Go</em></div><span class="tag">${esc(t("tag"))}</span></div></div>
+  <div class="ctrls"><label class="sr" for="lang">${esc(t("lang"))}</label><select id="lang">${opts}</select>
+  <button class="iconbtn" data-act="big" aria-pressed="${S.big}" title="${esc(t("big"))}"><span aria-hidden="true">A<small>A</small></span><span class="sr">${esc(t("big"))}</span></button></div></header>`;
+}
+function homePanel(){
+  const f=N[S.from];
+  const stations=S.scan?`<div class="card"><h3>${esc(t("scanTitle"))}</h3><p class="muted" style="margin:0">${esc(t("scanHint"))}</p>
+    <div class="stations">${STATIONS.map(id=>`<button class="station" data-act="station" data-id="${id}" aria-current="${id===S.from}">${ico("qr",20)}<span>${esc(nm(N[id]))}</span></button>`).join("")}</div></div>`:"";
+  return `<div class="card"><div class="eyebrow">${esc(t("here"))}</div><div class="here"><div style="min-width:0"><div class="name">${esc(nm(f))}</div><span class="muted" style="font-size:.85rem">${esc(stKind(f))}</span></div>
+    <button class="btn soft" data-act="scan" aria-expanded="${S.scan}">${ico("qr",20)}${esc(t("scan"))}</button></div></div>
+  ${stations}
+  <div class="search"><label class="sr" for="q">${esc(t("searchLbl"))}</label>${ico("search",22)}<input id="q" type="search" autocomplete="off" placeholder="${esc(t("searchPh"))}" value="${esc(S.q)}"></div>
+  <div class="chips" role="group">${CATS.map(c=>`<button class="cat" data-act="cat" data-id="${c}" aria-pressed="${S.cat===c}">${esc(t("cat_"+c))}</button>`).join("")}</div>
+  <div id="destWrap">${destList()}</div>
+  <div class="soon">${ico("wheel",24)}<div style="flex:1;min-width:0"><b>${esc(t("soonT"))}</b><span>${esc(t("accD"))}</span></div>
+    <button class="btn small ${S.acc?"primary":"ghost"}" data-act="acc" aria-pressed="${S.acc}">${esc(t(S.acc?"accOn":"accOff"))}</button></div>
+  <div class="card"><div class="eyebrow">${esc(t("smsTitle"))}</div><div class="bubble">${esc(t("smsBody"))} <span class="lnk">barzigo.app/t/300</span></div>
+    <button class="btn ghost" data-act="sms">${esc(t("smsBtn"))}</button></div>`;
+}
+function norm(s){return s.toLowerCase().replace(/["'׳״\-–()]/g," ").replace(/\s+/g," ").trim()}
+function destList(){
+  let items,title;const q=norm(S.q);
+  if(q){const words=q.split(" ");items=DEPTS.filter(d=>{const hay=norm(d.n.join(" ")+" "+d.k+" "+d.b);return words.every(w=>hay.includes(w))});title=t("results")}
+  else if(S.cat!=="all"){items=DEPTS.filter(d=>d.cat===S.cat);title=t("cat_"+S.cat)}
+  else return `<h2 style="margin-bottom:8px">${esc(t("go"))}</h2><div class="tiles">${QUICK.map(([id,ic])=>{const d=D[id],r=findRoute(S.from,"B"+d.b);
+    return `<button class="tile" data-act="go" data-id="${id}"><span class="ti" style="--c:var(${GRP(d.b)})">${ico(ic,26)}</span><b>${esc(nm(d))}</b>
+      <span class="meta"><span class="sign" style="--c:var(${GRP(d.b)})"><i>${d.b}</i></span><span class="mins">${r?`~${r.mins} ${esc(t("min"))}`:""}</span></span></button>`}).join("")}</div>`;
+  if(!items.length)return `<h2 style="margin-bottom:8px">${esc(title)}</h2><p class="empty">${esc(t("noRes"))}</p>`;
+  return `<h2 style="margin-bottom:8px">${esc(title)}</h2><ul class="list">${items.map(d=>{const r=findRoute(S.from,"B"+d.b);
+    return `<li><button class="item" data-act="go" data-id="${d.id}"><span class="t"><b>${esc(nm(d))}</b>${sign(d.b)}</span><span class="mins">${r?`~${r.mins} ${esc(t("min"))}`:""}</span></button></li>`}).join("")}</ul>`;
+}
+const icClass=k=>k==="arrive"||k==="dept"?"arrive":k==="start"?"start":"";
+function routePanel(R,steps){
+  const f=N[S.from],d=D[S.to];
+  const top=`<div class="rowback"><button class="btn ghost" data-act="back">${ico("back",18)}${esc(t("back"))}</button><h1>${esc(t("yourRoute"))}</h1></div>`;
+  const ft=`<div class="card"><div class="ft"><span class="k">${esc(t("from"))}</span><span class="v">${esc(nm(f))}</span><span class="k">${esc(t("to"))}</span><span class="v"><b>${esc(nm(d))}</b> ${sign(d.b)}</span></div>
+    <div class="sum"><span class="pill">${esc(t("sumTime",{t:R.mins}))}</span><span class="pill">${esc(t("sumDist",{d:R.walk}))}</span>${S.acc&&!R.noAcc?`<span class="pill">${ico("wheel",16)}${esc(t("accPill"))}</span>`:""}</div>
+    ${S.acc&&R.noAcc?`<div class="gpsmsg">${esc(t("noAccRoute"))}</div>`:""}</div>`;
+  return top+ft+`<button class="btn primary block big" data-act="startSteps">${ico("head",22)}${esc(t("startNav"))}</button>
+    <div class="card"><div class="eyebrow">${esc(t("live"))}</div><div class="livebtns"><button class="btn soft" data-act="liveGps">${ico("gps",20)}${esc(t("liveGps"))}</button><button class="btn soft" data-act="liveSim">${ico("walk",20)}${esc(t("liveSim"))}</button></div></div>
+    <div class="card"><h2>${esc(t("directions"))}</h2><ol class="steps">${steps.map((s,i)=>`<li><button class="step" data-act="sel" data-i="${i}" aria-current="${S.sel===i}">
+      <span class="ic ${icClass(s.kind)}">${ico(s.kind)}</span>
+      <span class="tx"><span>${esc(s.text)}</span>${s.note?`<span class="note">${esc(s.note)}</span>`:""}${s.note2?`<span class="note">${esc(s.note2)}</span>`:""}</span>
+      <span class="d">${s.dist?`${Math.round(s.dist)} ${esc(t("m"))}`:""}</span></button></li>`).join("")}</ol></div>`;
+}
+function stepsPanel(R,steps){
+  const s=steps[S.step],n=steps.length,last=S.step===n-1;
+  return `<div class="rowback"><button class="btn ghost" data-act="allSteps">${ico("back",18)}${esc(t("allSteps"))}</button></div>
+  <div class="card"><div class="eyebrow">${esc(t("stepOf",{i:S.step+1,n}))} · ${esc(nm(D[S.to]))}</div><div class="progress"><span style="width:${(S.step+1)/n*100}%"></span></div>
+    <div class="big"><span class="ic ${icClass(s.kind)}">${ico(s.kind)}</span>
+      <div class="say" aria-live="polite">${esc(s.text)}</div>
+      ${s.note?`<div class="note" style="font-size:1rem">${esc(s.note)}</div>`:""}${s.note2?`<div class="note">${esc(s.note2)}</div>`:""}
+      ${s.dist?`<div class="sum"><span class="pill">${Math.round(s.dist)} ${esc(t("m"))}</span></div>`:""}
+      <div class="photo">${ico("camera",22)}<span>${esc(t("photo"))}</span></div></div>
+    ${voiceBtn()}
+    <div class="navbtns"><button class="btn ghost" data-act="prev" ${S.step===0?"disabled":""}>${esc(t("prev"))}</button>
+      ${last?`<button class="btn primary" data-act="arrived">${esc(t("arrivedBtn"))}</button>`:`<button class="btn primary" data-act="next">${esc(t("next"))}</button>`}</div></div>`;
+}
+const voiceBtn=()=>window.speechSynthesis?`<button class="btn soft" data-act="voice" aria-pressed="${S.voice}">${ico("sound",20)}${esc(t("voice"))}</button>`:"";
+function arrivedPanel(){
+  const d=D[S.to],ins=indoorSteps(d);
+  const inside=ins?`${INDOOR[d.b].sample?`<p class="note" style="margin:0">${esc(t("sample"))}</p>`:""}<ol class="steps" style="width:100%">${ins.map(s=>`<li><div class="step"><span class="ic ${icClass(s.kind)}">${ico(s.kind)}</span>
+      <span class="tx"><span>${esc(s.text)}</span>${s.note?`<span class="note">${esc(s.note)}</span>`:""}${s.note2?`<span class="note">${esc(s.note2)}</span>`:""}</span><span></span></div></li>`).join("")}</ol>`
+    :`<p class="muted" style="margin:0">${esc(t("inside",{d:nm(d)}))}</p>`;
+  return `<div class="card done"><span class="ic arrive">${ico("arrive",36)}</span><h1>${esc(t("arrived"))}</h1><div><b>${esc(nm(d))}</b></div>${sign(d.b)}
+    ${inside}
+    ${S.fb?`<p class="muted" style="margin:0">${esc(t("fbThanks"))}</p>`:`<p style="margin:0">${esc(t("fbQ"))}</p><div class="fb"><button class="btn soft" data-act="fb" data-id="yes">${esc(t("fbYes"))}</button><button class="btn ghost" data-act="fb" data-id="no">${esc(t("fbNo"))}</button></div>`}
+    <button class="btn primary" data-act="newDest">${esc(t("newDest"))}</button></div>`;
+}
+
+/* ---------- Map ---------- */
+const FULL=[100,40,1520,1290];
+function viewBox(R){
+  if(!R||S.whole)return FULL;
+  const P=R.path.map(id=>N[id]);let x0=Math.min(...P.map(p=>p.x)),x1=Math.max(...P.map(p=>p.x)),y0=Math.min(...P.map(p=>p.y)),y1=Math.max(...P.map(p=>p.y));
+  // extra room on top for the destination tag
+  const pad=110;x0-=pad;x1+=pad;y0-=pad+170;y1+=pad;let w=Math.max(x1-x0,560),h=Math.max(y1-y0,470);const ar=FULL[2]/FULL[3];
+  if(w/h>ar)h=w/ar;else w=h*ar;const cx=(x0+x1)/2,cy=(y0+y1)/2;return [cx-w/2,cy-h/2,w,h];
+}
+function mapSVG(R,active){
+  const vb=S.view==="live"&&S.live&&S.live.pos&&!S.whole?liveBox(S.live.pos):viewBox(R),rtl=S.lang==="he"||S.lang==="ar",destB=S.to?D[S.to].b:null;
+  // map units per screen pixel, so labels and markers keep a readable size at any zoom
+  const W=Math.max(260,(document.getElementById("mapSvg")||{}).clientWidth||Math.min(innerWidth-56,700)),u=vb[2]/W;
+  let s=`<svg class="map" id="mapSvg" viewBox="${vb.map(v=>v.toFixed(0)).join(" ")}" style="aspect-ratio:${FULL[2]}/${FULL[3]}" role="img" aria-label="${esc(t("mapTitle"))}"><rect x="-500" y="-500" width="2800" height="2400" fill="var(--ground)"/>`;
+  s+=`<polygon points="120,1165 235,925 265,740 470,330 820,55 1310,330 1200,400 1150,640 1030,1000 930,1215 520,1200" fill="var(--campus)"/>`;
+  // streets
+  s+=`<path d="M1395,295 C1250,600 1180,900 1150,1300" fill="none" stroke="var(--road)" stroke-width="34"/><path d="M110,1170 L900,1245 L1150,1300" fill="none" stroke="var(--road)" stroke-width="34"/>
+    <path d="M1238,385 L1330,330 L1395,295" fill="none" stroke="var(--road)" stroke-width="26"/>
+    <circle cx="1395" cy="295" r="36" fill="var(--road)"/><circle cx="1395" cy="295" r="16" fill="var(--ground)"/><circle cx="320" cy="1205" r="30" fill="var(--road)"/><circle cx="320" cy="1205" r="12" fill="var(--ground)"/>
+    <text x="1235" y="760" font-size="22" fill="var(--muted)" transform="rotate(-68 1235 760)" text-anchor="middle">${esc(["שד' דוד בן גוריון","David Ben Gurion Blvd","جادة دافيد بن غوريون","бул. Давида Бен-Гуриона"][LI()])}</text>
+    <text x="520" y="1232" font-size="22" fill="var(--muted)" transform="rotate(5 520 1232)" text-anchor="middle">${esc(["רח' ההסתדרות","HaHistadrut St","شارع الهستدروت","ул. Ха-Гистадрут"][LI()])}</text>`;
+  // parking + helipad
+  const PK=[["1",[[890,955],[1020,955],[1020,1205],[890,1205]],[960,1080]],["2",[[800,345],[1130,365],[1100,480],[800,470]],[965,410]],["3",[[935,165],[1095,215],[1060,300],[935,300]],[1010,240]],["4",[[640,215],[760,115],[790,250],[690,250]],[730,190]]];
+  for(const [n,pts,[cx,cy]] of PK)s+=`<polygon points="${pts.map(p=>p.join(",")).join(" ")}" fill="var(--park)"/><rect x="${cx-34}" y="${cy-18}" width="26" height="26" rx="4" fill="var(--surface)"/><text x="${cx-21}" y="${cy+2}" font-size="20" font-weight="700" text-anchor="middle" fill="var(--ink)">P</text><text x="${cx+12}" y="${cy+4}" font-size="30" font-weight="700" text-anchor="middle" fill="var(--surface)">${n}</text>`;
+  s+=`<rect x="850" y="162" width="75" height="78" fill="var(--road)"/><text x="887" y="212" font-size="34" font-weight="700" text-anchor="middle" fill="var(--surface)">H</text><line x1="887" y1="240" x2="890" y2="322" stroke="var(--road)" stroke-width="12"/>`;
+  // roads and walks
+  const drawn=new Set();
+  for(const id in N)for(const {to,e} of ADJ[id]){const key=[id,to].sort().join();if(drawn.has(key))continue;drawn.add(key);const a=N[id],b=N[to];if(a.bld||b.bld)continue;
+    s+=e.type==="road"?`<line x1="${a.x}" y1="${a.y}" x2="${b.x}" y2="${b.y}" stroke="var(--road)" stroke-width="26" stroke-linecap="round"/>`:`<line x1="${a.x}" y1="${a.y}" x2="${b.x}" y2="${b.y}" stroke="var(--walk)" stroke-width="10" stroke-linecap="round"/>`}
+  // unnamed shapes stay neutral so only the buildings people look for carry color
+  for(const c in DECOR)for(const [x,y,w,h] of DECOR[c])s+=`<rect x="${x}" y="${y}" width="${w}" height="${h}" fill="var(--park)" opacity=".4"/>`;
+  // buildings: a number is drawn only where it fits at a readable size
+  const fs=11*u;
+  for(const b in BLDS){const rects=BLDS[b][3],[x,y,w,h]=rects[0],isDest=b===destB,big=w*h>2500,f=big?fs*1.3:fs,fit=w>=f*1.9&&h>=f*1.05;
+    s+=`<g class="bl" data-act="bld" data-id="${b}" tabindex="0" role="button" aria-label="${esc(t("bld",{b}))}">${rects.map(([x,y,w,h])=>`<rect x="${x}" y="${y}" width="${w}" height="${h}" fill="var(${GRP(b)})" ${isDest?`stroke="var(--route)" stroke-width="${4*u}"`:""}/>`).join("")}
+      ${fit||isDest?`<text x="${x+w/2}" y="${y+h/2+f*.36}" font-size="${f}" font-weight="700" text-anchor="middle" fill="var(--badgeInk)" style="pointer-events:none">${b}</text>`:""}</g>`}
+  // gates
+  for(const [g,x,y] of [["1",1238,385],["2",900,1232]])s+=`<rect x="${x-26}" y="${y-38}" width="52" height="62" fill="var(--surface)" stroke="var(--line)"/><text x="${x}" y="${y+2}" font-size="40" font-weight="700" text-anchor="middle" fill="var(--ink)">${g}</text><text x="${x}" y="${y+18}" font-size="13" text-anchor="middle" fill="var(--muted)">${esc(t("k_gate"))}</text>`;
+  // landmark tags orient visitors on the overview; once a route is shown it and the destination tag take over
+  const clampX=(x,half)=>Math.min(Math.max(x,vb[0]+half+4*u),vb[0]+vb[2]-half-4*u);
+  for(const [b,ic,names] of LANDMARKS){if(R)continue;const [x,y,w,h]=BLDS[b][3][0],lf=11*u,label=names[LI()];
+    const tw=label.length*lf*.58,bw=tw+lf*2.9,bh=lf*2,cx=clampX(x+w/2,bw/2),cy=y+h/2,F0=N[S.from];
+    if(Math.abs(cx-F0.x)<bw/2+40*u&&Math.abs(cy-F0.y)<bh/2+40*u)continue; // keep "you are here" readable
+    s+=`<g style="pointer-events:none" opacity=".95"><rect x="${cx-bw/2}" y="${cy-bh/2}" width="${bw}" height="${bh}" rx="${bh/2}" fill="var(--surface)" stroke="var(--line)" stroke-width="${u}"/>
+      <circle cx="${cx-bw/2+bh/2}" cy="${cy}" r="${bh/2-1.5*u}" fill="var(${GRP(b)})"/><svg x="${cx-bw/2+bh/2-lf*.6}" y="${cy-lf*.6}" width="${lf*1.2}" height="${lf*1.2}" viewBox="0 0 24 24" fill="none" stroke="var(--badgeInk)" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">${ICON[ic]}</svg>
+      <text x="${cx+bh/2-lf*.25}" y="${cy+lf*.36}" font-size="${lf}" font-weight="500" text-anchor="middle" fill="var(--ink)">${esc(label)}</text></g>`}
+  if(R){
+    const P=R.path.map(id=>N[id]);const pts=P.map(p=>p.x+","+p.y).join(" ");const sw=6*u;
+    s+=`<polyline points="${pts}" fill="none" stroke="var(--routeCase)" stroke-width="${sw+4*u}" stroke-linecap="round" stroke-linejoin="round"/><polyline points="${pts}" fill="none" stroke="var(--route)" stroke-width="${sw}" stroke-linecap="round" stroke-linejoin="round" opacity="${active&&active.seg[1]>active.seg[0]?.55:1}"/>`;
+    if(active&&active.seg[1]>active.seg[0]){const ap=P.slice(active.seg[0],active.seg[1]+1).map(p=>p.x+","+p.y).join(" ");
+      s+=`<polyline points="${ap}" fill="none" stroke="var(--route)" stroke-width="${sw+2}" stroke-linecap="round" stroke-linejoin="round"/><polyline points="${ap}" fill="none" stroke="var(--routeCase)" stroke-width="${sw/3}" stroke-linecap="round" class="flow"/>`}
+    const L=P[P.length-1],ps=1.5*u;
+    s+=`<g transform="translate(${L.x} ${L.y}) scale(${ps}) translate(-9 -21)"><path d="M9 20s-7-6.7-7-12a7 7 0 0 1 14 0c0 5.3-7 12-7 12z" fill="var(--pin)" stroke="var(--surface)" stroke-width="1.5"/><circle cx="9" cy="8" r="2.6" fill="var(--surface)"/></g>`;
+    // destination name tag above the pin (below it when there is no room)
+    if(S.to){let label=nm(D[S.to]);if(label.length>24)label=label.slice(0,23)+"…";label+=" · "+D[S.to].b;const cf=12*u,bw=label.length*cf*.58+cf*1.6,bh=cf*2.1,cx=clampX(L.x,bw/2);
+      let top=L.y-21*ps-6*u-bh;if(top<vb[1]+2*u)top=L.y+8*u;
+      s+=`<g style="pointer-events:none"><rect x="${cx-bw/2}" y="${top}" width="${bw}" height="${bh}" rx="${6*u}" fill="var(--surface)" stroke="var(--pin)" stroke-width="${2*u}"/>
+        <text x="${cx}" y="${top+bh/2+cf*.36}" font-size="${cf}" font-weight="700" text-anchor="middle" fill="var(--ink)">${esc(label)}</text></g>`}
+  }
+  const F=N[S.from],r=8*u;
+  if(S.view==="live"&&S.live){const p=S.live.pos||F,lr=8*u;
+    return s+`<g id="liveDot" transform="translate(${p.x} ${p.y})" ${S.live.pos?"":'opacity="0"'}><circle r="${lr*2}" fill="var(--link)" class="pulse"/><circle r="${lr}" fill="var(--link)" stroke="var(--surface)" stroke-width="${lr/3}"/></g></svg>`}
+  s+=`<circle cx="${F.x}" cy="${F.y}" r="${r*1.6}" fill="var(--route)" class="pulse"/><circle cx="${F.x}" cy="${F.y}" r="${r}" fill="var(--route)" stroke="var(--routeCase)" stroke-width="${r/4}"/>
+    <text x="${F.x}" y="${F.y-r-5*u}" font-size="${13*u}" font-weight="700" text-anchor="middle" fill="var(--ink)" stroke="var(--surface)" stroke-width="${3*u}" paint-order="stroke" direction="${rtl?"rtl":"ltr"}">${esc(t("legHere"))}</text>`;
+  return s+"</svg>";
+}
+function mapCol(R,active){
+  return `<div class="mapttl"><h3>${esc(t("mapTitle"))}</h3>${R?`<button class="btn ghost small" data-act="whole">${esc(S.whole?t("fit"):t("whole"))}</button>`:""}</div>
+    ${mapSVG(R,active)}
+    <div class="legend"><span><svg width="12" height="12"><circle cx="6" cy="6" r="5" fill="var(--route)" stroke="var(--routeCase)"/></svg>${esc(t("legHere"))}</span><span><svg width="12" height="12"><circle cx="6" cy="6" r="5" fill="var(--pin)"/></svg>${esc(t("legDest"))}</span>
+    <span><svg width="18" height="8"><line x1="1" y1="4" x2="17" y2="4" stroke="var(--route)" stroke-width="4" stroke-linecap="round"/></svg>${esc(t("legRoute"))}</span><span><svg width="18" height="8"><line x1="1" y1="4" x2="17" y2="4" stroke="var(--walk)" stroke-width="5" stroke-linecap="round"/></svg>${esc(t("legWalk"))}</span>
+    ${R?"":[["--g1","100–200","z1"],["--g3","300–400","z3"],["--g5","500","z5"],["--g6","600","z6"]].map(([c,l,z])=>`<span><svg width="12" height="12"><rect width="12" height="12" rx="2" fill="var(${c})"/></svg><span><bdi>${l}</bdi> · ${esc(t(z))}</span></span>`).join("")}</div>`;
+}
+
+/* ---------- Live navigation (GPS or walking simulation) ---------- */
+const SIM_SPEED=9; // metres per second, sped up for demos
+function liveBox(p){const w=560,h=w*FULL[3]/FULL[2];return [p.x-w/2,p.y-h/2,w,h]}
+function pointAt(R,m){const P=R.path.map(id=>N[id]);for(let i=0;i<R.edges.length;i++){if(m<=R.cum[i+1]||i===R.edges.length-1){const e=R.cum[i+1]-R.cum[i]||1,f=Math.min(1,Math.max(0,(m-R.cum[i])/e));return {x:P[i].x+(P[i+1].x-P[i].x)*f,y:P[i].y+(P[i+1].y-P[i].y)*f}}}return {x:P[0].x,y:P[0].y}}
+function project(R,p){const P=R.path.map(id=>N[id]);let best={d:Infinity,m:0};
+  for(let i=0;i<R.edges.length;i++){const a=P[i],b=P[i+1],dx=b.x-a.x,dy=b.y-a.y,L2=dx*dx+dy*dy||1;const f=Math.max(0,Math.min(1,((p.x-a.x)*dx+(p.y-a.y)*dy)/L2));
+    const qx=a.x+dx*f,qy=a.y+dy*f,d=Math.hypot(p.x-qx,p.y-qy)*0.5;if(d<best.d)best={d,m:R.cum[i]+(R.cum[i+1]-R.cum[i])*f}}return best}
+function liveStep(steps,m){const last=steps.findIndex(s=>s.kind==="arrive");for(let i=1;i<last;i++)if(steps[i].endM>m+1)return i;return last}
+// GPS calibration: two known points (the gates) give a similarity transform from GPS to map units
+const CAL_PTS={g1:[1238,385],g2:[900,1232]};
+function loadCal(){try{return JSON.parse(localStorage.getItem("barzigo-cal")||"{}")}catch(e){return {}}}
+function saveCal(c){try{localStorage.setItem("barzigo-cal",JSON.stringify(c))}catch(e){}}
+function gpsToMap(lat,lng){const c=loadCal();if(!c.g1||!c.g2)return null;
+  const loc=(la,ln)=>[(ln-c.g1.lng)*Math.cos(c.g1.lat*Math.PI/180)*111320,(la-c.g1.lat)*110540];
+  const w1=[0,0],w2=loc(c.g2.lat,c.g2.lng),z1=[CAL_PTS.g1[0],-CAL_PTS.g1[1]],z2=[CAL_PTS.g2[0],-CAL_PTS.g2[1]];
+  const dw=[w2[0]-w1[0],w2[1]-w1[1]],dz=[z2[0]-z1[0],z2[1]-z1[1]],den=dw[0]*dw[0]+dw[1]*dw[1];if(!den)return null;
+  const a=[(dz[0]*dw[0]+dz[1]*dw[1])/den,(dz[1]*dw[0]-dz[0]*dw[1])/den],w=loc(lat,lng);
+  const z=[a[0]*w[0]-a[1]*w[1]+z1[0],a[0]*w[1]+a[1]*w[0]+z1[1]];return {x:z[0],y:-z[1],scale:Math.hypot(a[0],a[1])}}
+function calOk(){const c=loadCal();if(!c.g1||!c.g2)return false;const p=gpsToMap(c.g1.lat,c.g1.lng);return p&&p.scale>0.8&&p.scale<6}
+let LR=null,LS=null; // route and steps of the running live session
+function liveStart(mode){
+  liveStop();S.view="live";S.whole=false;S.live={mode,m:0,step:1,pos:null,paused:false,msg:"",acc:null,off:0};
+  LR=findRoute(S.from,"B"+D[S.to].b);LS=buildSteps(LR,D[S.to]);
+  if(mode==="sim"){S.live.pos=pointAt(LR,0);let last=performance.now();
+    const tick=now=>{if(!S.live||S.live.mode!=="sim")return;const dt=Math.min(.1,(now-last)/1000);last=now;
+      if(!S.live.paused){S.live.m+=dt*SIM_SPEED;S.live.pos=pointAt(LR,S.live.m);liveUpdate()}if(S.live)S.live.raf=requestAnimationFrame(tick)};
+    S.live.raf=requestAnimationFrame(tick)}
+  else gpsStart();
+  render();window.scrollTo({top:0});
+}
+function gpsStart(){
+  if(!navigator.geolocation){S.live.msg=t("gpsNo");return}
+  S.live.msg=t("gpsWait");
+  try{S.live.watch=navigator.geolocation.watchPosition(onFix,()=>{if(S.live){S.live.msg=t("gpsNo");S.live.denied=true;render()}},{enableHighAccuracy:true,maximumAge:2000,timeout:20000})}
+  catch(e){S.live.msg=t("gpsNo");S.live.denied=true}
+}
+function onFix(pos){
+  if(!S.live)return;const {latitude:lat,longitude:lng,accuracy}=pos.coords;S.live.lastFix={lat,lng};S.live.acc=Math.round(accuracy);
+  const p=gpsToMap(lat,lng);if(!p||!calOk()){S.live.msg="";render();return}
+  const pr=project(LR,p);S.live.pos=p;S.live.msg="";
+  if(pr.d>30){S.live.off++;if(S.live.off>=3){// reroute from the nearest walkable point
+      let best=null,bd=Infinity;for(const id in N){const n=N[id];if(n.bld)continue;const d=Math.hypot(n.x-p.x,n.y-p.y);if(d<bd){bd=d;best=id}}
+      S.from=best;LR=findRoute(S.from,"B"+D[S.to].b);LS=buildSteps(LR,D[S.to]);S.live.m=0;S.live.off=0;S.live.step=1;S.live.msg=t("offRoute");render();return}}
+  else{S.live.off=0;S.live.m=Math.max(S.live.m,pr.m)}
+  liveUpdate();
+}
+function liveStop(){if(!S.live)return;if(S.live.raf)cancelAnimationFrame(S.live.raf);if(S.live.watch!=null&&navigator.geolocation)navigator.geolocation.clearWatch(S.live.watch);S.live=null}
+function liveUpdate(){
+  const L=S.live;if(!L||!LR)return;
+  if(L.m>=LR.total-1){liveStop();S.view="arrived";S.fb=null;render();return}
+  const k=liveStep(LS,L.m);if(k!==L.step){L.step=k;render();return}
+  const dot=document.getElementById("liveDot"),svg=document.getElementById("mapSvg");
+  if(dot&&L.pos){dot.setAttribute("transform",`translate(${L.pos.x.toFixed(1)} ${L.pos.y.toFixed(1)})`);dot.removeAttribute("opacity")}
+  if(svg&&L.pos&&!S.whole)svg.setAttribute("viewBox",liveBox(L.pos).map(v=>v.toFixed(0)).join(" "));
+  const a=document.getElementById("liveIn"),b=document.getElementById("liveTot");
+  if(a)a.textContent=t("inM",{d:Math.max(0,Math.round(LS[k].endM-L.m))});
+  if(b){const left=Math.max(0,LR.total-L.m);b.textContent=t("remain",{d:Math.round(left),t:Math.max(1,Math.round(left/1.2/60))})}
+}
+function livePanel(){
+  const L=S.live,s=LS[L.step],nx=LS[L.step+1],left=Math.max(0,LR.total-L.m),c=loadCal();
+  const needCal=L.mode==="gps"&&!L.denied&&!calOk();
+  return `<div class="rowback"><button class="btn ghost" data-act="liveStop">${ico("back",18)}${esc(t("stop"))}</button></div>
+  <div class="card"><div class="eyebrow">${esc(L.mode==="sim"?t("liveSim"):t("liveGps"))} · ${esc(nm(D[S.to]))}</div>
+    <div class="big"><span class="ic">${ico(s.kind)}</span><div class="say" aria-live="polite">${esc(s.text)}</div>
+      ${s.kind!=="arrive"?`<div class="sum"><span class="pill" id="liveIn">${esc(t("inM",{d:Math.max(0,Math.round(s.endM-L.m))}))}</span><span class="pill" id="liveTot">${esc(t("remain",{d:Math.round(left),t:Math.max(1,Math.round(left/1.2/60))}))}</span></div>`:""}
+      ${nx?`<div class="note" style="font-size:.95rem">${esc(t("then",{s:nx.text}))}</div>`:""}</div>
+    ${voiceBtn()}
+    ${L.mode==="sim"?`<p class="note" style="margin:0">${esc(t("liveSimNote"))}</p><button class="btn soft" data-act="livePause">${esc(L.paused?t("resume"):t("pause"))}</button>`:""}
+    ${L.mode==="gps"&&L.msg?`<div class="gpsmsg">${esc(L.msg)}</div>`:""}
+    ${L.mode==="gps"&&L.acc!=null?`<p class="note" style="margin:0">${esc(t("gpsAcc",{a:L.acc}))}</p>`:""}
+    ${L.mode==="gps"&&L.denied?`<button class="btn soft" data-act="liveSim">${ico("walk",20)}${esc(t("liveSim"))}</button>`:""}</div>
+  ${needCal?`<div class="card"><h3>${esc(t("calT"))}</h3><p class="note" style="margin:0">${esc(t("calD"))}</p>
+    <div class="livebtns"><button class="btn ${c.g1?"soft":"ghost"}" data-act="cal" data-id="g1">${esc(t("calG1"))}${c.g1?" · "+esc(t("calSaved")):""}</button><button class="btn ${c.g2?"soft":"ghost"}" data-act="cal" data-id="g2">${esc(t("calG2"))}${c.g2?" · "+esc(t("calSaved")):""}</button></div>
+    ${c.g1&&c.g2&&!calOk()?`<div class="gpsmsg">${esc(t("calBad"))}</div>`:""}</div>`:""}`;
+}
+
+/* ---------- Render ---------- */
+function render(){
+  document.documentElement.classList.toggle("big",S.big);
+  const rtl=S.lang==="he"||S.lang==="ar";app.dir=rtl?"rtl":"ltr";app.lang=S.lang;document.documentElement.lang=S.lang;
+  let R=null,steps=null,active=null,panel;
+  if(S.to&&S.view!=="home"&&S.view!=="live"){R=findRoute(S.from,"B"+D[S.to].b);if(R){steps=buildSteps(R,D[S.to]);if(S.step>=steps.length)S.step=steps.length-1}}
+  if(S.view==="route"&&R){panel=routePanel(R,steps);active=S.sel!=null?steps[S.sel]:null}
+  else if(S.view==="steps"&&R){panel=stepsPanel(R,steps);active=steps[S.step]}
+  else if(S.view==="live"&&S.live&&LR){R=LR;steps=LS;panel=livePanel();active=steps[S.live.step]}
+  else if(S.view==="arrived"){panel=arrivedPanel()}
+  else{S.view="home";panel=homePanel()}
+  app.innerHTML=header()+`<main class="grid v-${S.view==="live"?"steps":S.view}"><section class="panel">${panel}</section><section class="mapcol">${mapCol(S.view==="home"?null:R,active)}</section></main><p class="foot">${esc(t("foot"))}</p>`;
+  // read the current instruction aloud once each time it changes
+  if(S.voice&&steps&&(S.view==="steps"||S.view==="live")){const i=S.view==="steps"?S.step:S.live.step,s=steps[i],key=S.view+S.to+i;
+    if(key!==S.spoken){S.spoken=key;say(s.text+(s.note?". "+s.note:""))}}
+}
+function goTo(id){S.to=id;S.view="route";S.step=0;S.sel=null;S.fb=null;S.whole=false;render();window.scrollTo({top:0})}
+document.addEventListener("click",ev=>{
+  const el=ev.target.closest("[data-act]");if(!el)return;const a=el.dataset.act,id=el.dataset.id;
+  switch(a){
+    case"big":S.big=!S.big;save();break;
+    case"acc":S.acc=!S.acc;save();break;
+    case"voice":S.voice=!S.voice;S.spoken=null;if(!S.voice&&window.speechSynthesis)speechSynthesis.cancel();save();break;
+    case"scan":S.scan=!S.scan;break;
+    case"station":S.from=id;S.scan=false;break;
+    case"cat":S.cat=id;S.q="";break;
+    case"go":goTo(id);return;
+    case"bld":{S.q=id;S.cat="all";S.view="home";S.to=null;render();const q=document.getElementById("q");if(q)q.scrollIntoView({block:"center"});return}
+    case"sms":S.from="P1";goTo(byName("300","מרפאת"));return;
+    case"back":case"newDest":liveStop();S.view="home";S.to=null;S.sel=null;break;
+    case"startSteps":S.view="steps";S.step=0;break;
+    case"allSteps":S.view="route";S.sel=S.step;break;
+    case"sel":{const i=+el.dataset.i;S.sel=S.sel===i?null:i;break}
+    case"next":S.step++;break;
+    case"prev":S.step=Math.max(0,S.step-1);break;
+    case"arrived":S.view="arrived";break;
+    case"fb":S.fb=id;break;
+    case"whole":S.whole=!S.whole;break;
+    case"liveSim":liveStart("sim");return;
+    case"liveGps":liveStart("gps");return;
+    case"livePause":S.live.paused=!S.live.paused;break;
+    case"liveStop":liveStop();S.view="route";break;
+    case"cal":{const f=S.live&&S.live.lastFix;if(!f){S.live.msg=t("gpsWait");break}const c=loadCal();c[id]=f;saveCal(c);break}
+    default:return;
+  }
+  render();
+});
+document.addEventListener("keydown",ev=>{if((ev.key==="Enter"||ev.key===" ")&&ev.target.matches&&ev.target.matches("g.bl")){ev.preventDefault();ev.target.dispatchEvent(new MouseEvent("click",{bubbles:true}))}});
+document.addEventListener("change",ev=>{if(ev.target.id==="lang"){S.lang=ev.target.value;save();render()}});
+document.addEventListener("input",ev=>{if(ev.target.id==="q"){S.q=ev.target.value;if(S.q)S.cat="all";document.getElementById("destWrap").innerHTML=destList();
+  document.querySelectorAll(".cat").forEach(b=>b.setAttribute("aria-pressed",String(b.dataset.id===S.cat)))}});
+function fromHash(){const h=(location.hash||"").slice(1);
+  if(h.startsWith("qr-")&&HASH[h.slice(3)]){S.from=HASH[h.slice(3)];S.view="home";S.to=null}
+  else if(h==="sms-eye"){S.from="P1";S.to=byName("300","מרפאת");S.view="route"}}
+window.addEventListener("hashchange",()=>{fromHash();render()});
+fromHash();render();
+</script>
